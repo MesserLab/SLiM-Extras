@@ -16,13 +16,7 @@ Contributions to SLiM-Extras from SLiM users are welcome; if you have done somet
 License
 ----------
 
-Copyright (c) 2017 Philipp Messer.  All rights reserved.
-
-SLiM-Extras is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
-SLiM-Extras is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with SLiM-Extras.  If not, see [http://www.gnu.org/licenses/](http://www.gnu.org/licenses/).
+The code in the SLiM-Extras repository has been placed in the public domain without restriction.  We request, however, that if you use this code you credit SLiM-Extras and provide a link to the SLiM-Extras repository at [https://github.com/MesserLab/SLiM-Extras](https://github.com/MesserLab/SLiM-Extras).  Thank you.
 
 
 Development & Feedback
