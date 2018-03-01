@@ -1,0 +1,9 @@
+This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
+
+1 Mar. 2018: add functions/twoHabitatMap.txt
+
+30 Oct. 2017: add sublaunching/aggregateLocalAncestry.R
+
+24 Oct. 2017: add functions/heterozygosity.txt, sublaunching/gen_replicates.py
+
+20 Oct. 2017: initial setup

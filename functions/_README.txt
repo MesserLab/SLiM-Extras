@@ -3,3 +3,5 @@ This folder is for reuseable user-defined Eidos functions that provide useful ad
 calcFST.txt : calculating FST between two subpopulations
 
 heterozygosity.txt : calculating mean nucleotide heterozygosity of individuals or subpopulations
+
+twoHabitatMap.txt : constructing a 2D spatial map algorithmically, with two habitats connected by a corridor
