@@ -1,0 +1,108 @@
+// Ben Haller, 9 April 2019: assess Hardy-Weinberg equilibrium during a selective sweep
+
+/*
+	This model is all about the output.  It sets up a simple selective sweep of an m2
+	mutation in generation 1000, and watches it as it progresses until it fixes or is
+	lost.  In each generation during the sweep, it finds the frequency of the sweep
+	mutation (p) and the non-sweep allele (q), predicts the proportions of AA/Aa/aa
+	if the population is in Hardy-Weinberg equilibrium, observes the actual proportions,
+	and compares observed versus expected with a chi-square test to see if there is
+	a significant difference from H-W equilibrium.  At the end it prints the percentage
+	of generations in which a significant difference was observed.  With the parameters
+	used in this model, significant departure from H-W equilibrium is typically only
+	observed in ~5% of generations, which is also the rate of false positive detection
+	expected by chance (alpha), so the sweep seems to be essentially undetectable with
+	the methods used here.  Presumably other parameters would yield a more detectable
+	sweep (faster, more deterministic), but that isn't really the point of the recipe;
+	it's more about how to predict, observe, and test H-W equilibrium in any model.
+	
+	One issue I notice with this is that when the expected number of aa is close to zero,
+	even a single aa individual is sufficient to produce a significant chi-square test
+	result, because (observed - expected)^2 / expected blows up when expected is very
+	small.  This is sort of due to the discretization of actual individuals, where the
+	number of aa must be either 0 or 1.  Presumably this is a known issue, and perhaps
+	there is a fix.  Maybe Fisher's exact test would be better.  Anyway, this is a good
+	starting point for such work; please let me know if you have improvements.
+	
+	Ben Haller, 29 April 2019
+*/
+
+initialize() {
+	initializeMutationRate(1e-7);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeMutationType("m2", 1.0, "f", 0.5);  // introduced mutation
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 99999);
+	initializeRecombinationRate(1e-8);
+}
+1 {
+	sim.addSubpop("p1", 1000);
+}
+1000 late() {
+	// start the sweep
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m2, 10000);
+}
+1000:100000 late() {
+	mut = sim.mutationsOfType(m2);
+	
+	if (size(mut) == 0)
+	{
+		// fixed or lost; finish up
+		fixed = (sum(sim.substitutions.mutationType == m2) == 1);
+		cat(ifelse(fixed, "\nFIXED\n", "\nLOST\n"));
+		
+		// summarize the history of the chi-square tests: what percentage were significant?
+		chisq_hist = sim.getValue("chisq_history");
+		if (size(chisq_hist) > 0)
+		{
+			sig = sum(chisq_hist >= 3.84);
+			total = size(chisq_hist);
+			percent = (sig / total) * 100;
+			catn("\n" + sig + " generations significant, of " + total + " (" + percent + "%)");
+		}
+		
+		sim.simulationFinished();
+	}
+	else if (size(mut) == 1)
+	{
+		// assess HW equilibrium using a chi-square test
+		// https://en.wikipedia.org/wiki/Hardy–Weinberg_principle#Significance_tests_for_deviation
+		catn("------------------------------------------------------");
+		catn("Generation " + sim.generation + ":");
+		
+		// get p and q
+		p = sim.mutationFrequencies(NULL, mut);
+		q = 1-p;
+		catn("p == " + p + ", q == " + q);
+		
+		// calculate expected fractions under H-W equilibrium
+		inds = sim.subpopulations.individuals;
+		ni = size(inds);
+		
+		expAA = p^2 * ni;
+		expAa = 2*p*q * ni;
+		expaa = q^2 * ni;
+		catn("Expected AA == " + expAA + ", Aa == " + expAa + ", aa == " + expaa);
+		
+		// calculate observed fractions
+		zyg = sapply(inds, "sum(applyValue.genomes.containsMutations(mut));");
+		obsAA = sum(zyg == 2);
+		obsAa = sum(zyg == 1);
+		obsaa = sum(zyg == 0);
+		catn("Observed p^2 == " + obsAA + ", 2pq == " + obsAa + ", q^2 == " + obsaa);
+		
+		// do a chi-square test to assess significant departure from H-W expectation
+		chisq = (obsAA - expAA)^2 / expAA;
+		chisq = chisq + (obsAa - expAa)^2 / expAa;
+		chisq = chisq + (obsaa - expaa)^2 / expaa;
+		
+		if (chisq < 3.84)    // alpha=0.05, 1 degree of freedom
+			catn("NOT SIGNIFICANTLY DIFFERENT (alpha = 0.05, chisq == " + chisq + ")");
+		else
+			catn("# SIGNIFICANTLY DIFFERENT (alpha = 0.05, chisq == " + chisq + ")");
+		
+		// remember the chi-square test statistic for summary at the end
+		sim.setValue("chisq_history", c(sim.getValue("chisq_history"), chisq));
+	}
+}
