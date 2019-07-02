@@ -18,4 +18,11 @@ Ben Haller and Philipp Messer, the authors of this code, hereby place the code i
   This reads in the file at path, splits each line into integers, and simplifies the result down to an integer matrix with one row per file line and one column per integer value within lines.  See recipe 15.11 for an example of the usage of this function.  The result will probably be incorrect if the file is not consistent in the number of values per line, or contains any extraneous punctuation, or issues of that sort; no error-checking is done here.
 
 */
-function (i)readIntTable(s$ path) { 	l = readFile(path); 	t(sapply(l, "asInteger(strsplit(applyValue));", simplify="matrix")); } 
+function (i)readIntTable(s$ path)
+{
+	if (!fileExists(path))
+		stop("readIntTable(): File not found at path " + path);
+	l = readFile(path);
+	m = sapply(l, "asInteger(strsplit(applyValue));", simplify="matrix");
+	return t(m);
+} 
