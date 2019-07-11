@@ -1,5 +1,9 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+11 Jul. 2019: add Linux versions of recipe 14.8 to the models folder
+
+2 Jul. 2019: improve the readIntTable() function
+
 29 Apr. 2019: add the HardyWeinberg_test.slim model
 
 1 Mar. 2018: add functions/twoHabitatMap.txt, functions/readIntTable.txt
