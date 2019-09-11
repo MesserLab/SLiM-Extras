@@ -1,0 +1,132 @@
+// Peter Ralph, 10 September 2019: autotetraploidy
+
+/*
+	Tetraploidy:
+	
+	This is a simple model of an autotetraploid.  To do this, we have to 
+	(a) give each individual *four* genomes
+	(b) let crossing-over happen between any of the possible pairings
+	(c) compute fitness with all four genomes
+	
+	(a) Four genomes: the "real" individuals are in p1. Each individual has their other two genomes stashed
+	away in an individual in p2; the individuals in p2 don't do anything on their own. To identify them,
+	each individual in p1 has a "tag" that records the index of their pair in p2, so that
+	  p2.individuals[ind.tag].genomes
+	gets you the other two genomes for individual "ind" in p1. (To create these associations, we give each
+	individual a unique label, stored in their tagF property.) After an individual dies, we clean up their
+	paired individual by setting their fitness to 0.0 in the following generation. So, there's always more
+	individuals in p2 than in p1; the difference is individuals in p2 whose pair in p1 has just died.
+	
+	(b) For crossing-over, we pick random orderings of each of the mates' four genomes,
+    then do crossing-over between pairs.
+	
+	(c) Every new mutation has a property, "h", that is a vector of length 5, always starting with 0 and ending
+	with 1, that has randomly chosen dominance coefficients. Then, the contribution to fitness of having
+	k copies of a mutation is h[k] * s, where recall that: indexing is zero-based; fitness is multiplicative; and
+	since this is a nonWF model, "fitness" means probability of survival until the next generation.
+
+*/
+
+initialize() {
+	initializeSLiMModelType("nonWF");
+	
+	defineConstant("K", 100);
+	defineConstant("L", 1e6); // total bp length
+	
+	
+	initializeMutationType("m1", 0.5, "e", 0.01);
+	m1.convertToSubstitution = T;
+	
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, L - 1);
+	initializeMutationRate(1e-7);
+	initializeRecombinationRate(1e-8);
+	defineConstant("totalLength", L * 1e-8); // total genetic length
+}
+
+reproduction(p1) {
+	mate = p1.sampleIndividuals(1);
+	ma_chroms = c(individual.genomes, p2.individuals[individual.tag].genomes);
+	pa_chroms = c(mate.genomes, p2.individuals[mate.tag].genomes);
+	ma_order = sample(seqLen(4), 4);
+	pa_order = sample(seqLen(4), 4);
+	breakpoints1 = sim.chromosome.drawBreakpoints();
+	breakpoints2 = sim.chromosome.drawBreakpoints();
+	offspring = p1.addRecombinant(ma_chroms[ma_order[0]], ma_chroms[ma_order[1]], breakpoints1,
+		pa_chroms[pa_order[0]], pa_chroms[pa_order[1]], breakpoints2);
+	breakpoints1 = sim.chromosome.drawBreakpoints();
+	breakpoints2 = sim.chromosome.drawBreakpoints();
+	other = p2.addRecombinant(ma_chroms[ma_order[2]], ma_chroms[ma_order[3]], breakpoints1,
+		pa_chroms[pa_order[2]], pa_chroms[pa_order[3]], breakpoints2);
+	tag = runif(1);
+	offspring.tagF = tag;
+	other.tagF = tag;
+}
+
+mutation(m1) {
+	// the fitness effect of having k alleles will be h[k] * s
+	mut.setValue("h", c(0.0, sort(runif(3)), 1.0));
+	return T;
+}
+
+1 early() {
+	sim.addSubpop("p1", K);
+	sim.addSubpop("p2", p1.individualCount);
+	for (k in seqLen(p1.individualCount)) {
+		// we can't point to the other individual so we have to associate them with unique tags
+		tag = runif(1);
+		p1.individuals[k].tagF = tag;
+		p2.individuals[k].tagF = tag;
+		p1.individuals[k].tag = k;
+	}
+}
+
+2: early() {
+	// initialize tags for new inds
+	inds = p1.individuals[p1.individuals.age == 0];
+	others = p2.individuals[p2.individuals.age == 0];
+	idx = match(inds.tagF, others.tagF);
+	inds.tag = others.index[idx];
+}
+
+2: early() {
+	// mark no-longer-alive p2 individuals for death
+	// don't have to do this every generation
+	alive = rep(0.0, p2.individualCount);
+	alive[p1.individuals.tag] = 1.0;
+	p2.individuals.fitnessScaling = alive;
+	// update tags to reflect this
+	// note we are assuming that death won't rearrange their relative orders
+	tag_map = asInteger(cumSum(alive) - 1);
+	p1.individuals.tag = tag_map[p1.individuals.tag];
+}
+
+early() {
+	p1.fitnessScaling = K / p1.individualCount;
+}
+
+fitness(m1, p1) {
+	other = p2.individuals[individual.tag];
+	h = mut.getValue("h");
+	// note: sum(individual.genomes.containsMutations(mut))
+	// is equivalent to but slower than (heterozygous ? 1 else 2)
+	// ... but we can't do this for "other" so leaving it this way
+	n = sum(individual.genomes.containsMutations(mut)) + sum(other.genomes.containsMutations(mut));
+	return 1 + h[n] * mut.selectionCoeff;
+}
+
+late() {
+	inds = p1.individuals;
+	catn(sim.generation + ": " + size(inds) + " (" + max(inds.age) + ")");
+	// for (ind in inds)
+	// 	catn(ind.index + ":" + ind.tag + " - " + ind.tagF + " : " + p2.individuals[ind.tag].tagF);
+}
+
+1000 late() {
+	for (ind in p1.individuals) {
+		if (ind.tagF != p2.individuals[ind.tag].tagF) {
+			catn("oh no! there was an error for individual " + ind.index);
+		}
+	}
+	catn("done!");
+}
