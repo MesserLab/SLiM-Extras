@@ -1,7 +1,7 @@
 #
 #	aggregateLocalAncestry.R
 #
-#	Run a set of replicates of recipe 13.9, "True local ancestry",
+#	Run a set of replicates of recipe 14.7, "True local ancestry",
 #	aggregate the results, and generate a plot.
 #
 #	Created by Ben Haller, 10/30/2017
@@ -16,7 +16,7 @@
 
 # First of all, define the paths to slim and to the script; these
 # are system-specific and will need to be tailored to your machine.
-# This script is designed to work with the recipe for section 13.9 in
+# This script is designed to work with the recipe for section 14.7 in
 # the SLiM manual; the recipe is available for download online at
 # https://messerlab.org/slim/.  For simplicity we'll assume the recipe
 # has been renamed "recipe.txt" but the full name of the file can be
