@@ -5,3 +5,5 @@ HardyWeinberg_test.slim : test for significant departure from Hardy-Weinberg equ
 autotetraploid.slim : An autotetraploid model with selection.
 
 Recipe_14.8_Linux_1.slim, Recipe_14.8_Linux_2.slim: Modified versions of recipe 14.8 from Graham Gower.  These fix the live plotting methodology on recipe 14.8 to work on Linux, using two different strategies; see comments in each file for more information.
+
+Recipe_15.10_OnLand.slim: A modified version of recipe 15.10 that shows how to draw initial positions anywhere on land in a vectorized fashion, as a demonstration of how to vectorize iterative operations.
