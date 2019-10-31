@@ -1,0 +1,124 @@
+/*
+
+	This is a modified version of recipe 15.11, "Local adaptation on a heterogeneous landscape map".
+	Instead of generating an uncorrelated random landscape with runif(25, 0, 1), it sublaunches an
+	R script, landscape_ac.R, that generates an autocorrelated random landscape.  That R script,
+	which is superficially adapted from code written by Rupert Mazzucco, is based upon this paper:
+	
+	B.C. Haller, R. Mazzucco, U. Dieckmann. (2013). Evolutionary branching in complex landscapes.
+		American Naturalist 182(4), E127–E141.  http://dx.doi.org/10.1086/671907
+	
+	The "Landscape generation" section of the supplemental from that paper describes the algorithm
+	used by the landscape generator in some detail.  The generated landscape is based upon four
+	parameters: a linear-gradient slope, a nonlinear-gradient curvature, and the amplitude and
+	autocorrelation length of the random noise.  The gradients go from left to right across the
+	landscape, making the environmental value at the left edge necessarily different from the value
+	at the right edge, so this code and the generation code implement a landscape that is periodic
+	in the y-direction but *not* the x-direction.  If one did not want any gradient, but just an
+	autocorrelated random landscape, then one could adapt the code to be periodic on both axes
+	fairly easily.  Please do not ask me for help in doing so, however, as I do not understand the
+	R generator code myself; find yourself a friendly R-savvy mathematician.  (If someone does
+	adapt the generator code to make a landscape periodic on both axes, without the gradients,
+	I will be happy to post it here.)
+	
+	To run this model:
+	
+		- the generator R script should be in the current working directory (or fix the path)
+		- you must have R installed, and Rscript must be at /usr/local/bin/ (or fix the path)
+		- you must have the R package 'cubature' installed, and its dependencies
+	
+	Ben Haller, 31 October 2019
+	
+*/
+
+initialize() {
+	defineConstant("sigma_C", 0.1);
+	defineConstant("sigma_K", 0.5);
+	defineConstant("sigma_M", 0.1);
+	defineConstant("N", 500);
+	
+	initializeSLiMOptions(dimensionality="xyz", periodicity="y");
+	initializeMutationRate(1e-6);
+	initializeMutationType("m1", 0.5, "f", 0.0);        // neutral
+	initializeMutationType("m2", 0.5, "n", 0.0, 1.0);   // QTL
+	m2.convertToSubstitution = F;
+	
+	initializeGenomicElementType("g1", c(m1, m2), c(1, 0.1));
+	initializeGenomicElement(g1, 0, 1e5 - 1);
+	initializeRecombinationRate(1e-8);
+	
+	initializeInteractionType(1, "xyz", reciprocal=T, maxDistance=sigma_C * 3);     // competition
+	i1.setInteractionFunction("n", 1.0, sigma_C);
+	
+	initializeInteractionType(2, "xyz", reciprocal=T, maxDistance=sigma_M * 3);     // mate choice
+	i2.setInteractionFunction("n", 1.0, sigma_M);
+}
+fitness(m2) { return 1.0; }
+function (float)generateLandscape(f$ slope, f$ curvature, f$ amplitude, f$ aclength, [i$ minSize = 64])
+{
+	code = 	"source('landscape_ac.R');" +
+				"m <- generateLandscape(" + slope + ", " + curvature + ", "
+					+ amplitude + ", " + aclength + ", " + minSize + ");" +
+				"cat(as.vector(m));";
+	args = c("--vanilla", "-e", "\"" + code + "\"");
+	m = system("/usr/local/bin/Rscript", args);
+	
+	if (size(m) == 0)
+		stop("An error occurred in landscape generation");
+	
+	m = asFloat(strsplit(m, " "));
+	m = m - mean(m);                // center to have a mean of 0
+	l = asInteger(sqrt(size(m)));   // note, may or may not be 64
+	m = matrix(m, nrow=l, ncol=l, byrow=T);
+	catn("// generated landscape is " + l + " x " + l);
+	catn("//    range [" + min(m) + ", " + max(m) + "]");
+	catn("//    sd " + sd(m));
+	return m;
+}
+1 late() {
+	sim.addSubpop("p1", N);
+	p1.setSpatialBounds(c(0.0, 0.0, 0.0, 1.0, 1.0, 1.0));
+	p1.individuals.setSpatialPosition(p1.pointUniform(N));
+	p1.individuals.z = 0.0;
+	
+	// Generate an autocorrelated landscape map
+	m = generateLandscape(slope=0.5, curvature=0.0, amplitude=0.1, aclength=0.03);
+	p1.defineSpatialMap("map1", "xy", NULL, m, interpolate=T,
+		valueRange=c(-0.5, 0.5), colors=c("red", "yellow"));
+}
+modifyChild() {
+	// set offspring position based on parental position
+	do pos = p1.pointPeriodic(c(parent1.spatialPosition[0:1] + rnorm(2, 0, 0.005), 0.0));
+	while (!p1.pointInBounds(pos));
+	child.setSpatialPosition(pos);
+	
+	return T;
+}
+1: late() {
+	// construct phenotypes and fitness effects from QTLs
+	inds = sim.subpopulations.individuals;
+	phenotype = inds.sumOfMutationsOfType(m2);
+	location = inds.spatialPosition[rep(c(T,T,F), inds.size())];
+	optimum = p1.spatialMapValue("map1", location);
+	inds.fitnessScaling = 1.0 + dnorm(phenotype, optimum, sigma_K);
+	inds.z = phenotype;
+	
+	// color individuals according to phenotype
+	inds.color = p1.spatialMapColor("map1", phenotype);
+	
+	// evaluate phenotypic competition
+	i1.evaluate();
+	competition = sapply(inds, "sum(i1.strength(applyValue));");
+	effects = 1.0 - competition / size(inds);
+	inds.fitnessScaling = inds.fitnessScaling * effects;
+	
+	// evaluate mate choice in preparation for next generation
+	i2.evaluate();
+}
+mateChoice() {
+	// spatial mate choice
+	return i2.strength(individual);
+}
+10000 late() {
+	sim.simulationFinished();
+}
