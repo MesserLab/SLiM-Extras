@@ -7,7 +7,7 @@
 # By Rupert Mazzucco, with minor modifications by Ben Haller, July 2010
 #
 # For discussion see B.C. Haller, R. Mazzucco, U. Dieckmann. (2013). Evolutionary branching in
-# complex landscapes. American Naturalist 182(4), E127–E141. http://dx.doi.org/10.1086/671907
+# complex landscapes. American Naturalist 182(4), E127–E141. https://doi.org/10.1086/671907
 
 # To use this script, do something like:
 #
