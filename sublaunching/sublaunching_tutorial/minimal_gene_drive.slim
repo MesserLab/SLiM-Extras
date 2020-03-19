@@ -1,0 +1,206 @@
+//  Created by Sam Champer, 2020.
+//  A product of the Messer Lab, http://messerlab.org/slim/
+
+//  Sam Champer, Ben Haller and Philipp Messer, the authors of this code, hereby
+//  place the code in this file into the public domain without restriction.
+//  If you use this code, please credit SLiM-Extras and provide a link to
+//  the SLiM-Extras repository at https://github.com/MesserLab/SLiM-Extras.
+//  Thank you.
+
+// A toy gene-drive simulation.
+
+initialize() {
+    // The following three params are intended to be varied via the command line -d argument.
+    // They are given default values using the defineCfgParam() helper function,
+    // which can be seen below. This is done to increase code readability.
+    defineCfgParam("HOMING_SUCCESS_RATE", 0.9);
+    defineCfgParam("RESISTANCE_FORMATION_RATE", 0.01);
+    defineCfgParam("RECESSIVE_FEMALE_STERILE_SUPPRESSION", F);
+
+    defineCfgParam("DRIVE_FITNESS", 0.95);
+    defineCfgParam("DROP_SIZE", 100);
+    defineCfgParam("CAPACITY", 5000);
+    defineCfgParam("R1_OCCURRENCE_RATE", 0.0005);  // Relative to R2.
+
+    // This simulation will use a non-Wright-Fisher model.
+    initializeSLiMModelType("nonWF");
+
+    // Four variations: Wild type, drive, r1 resistance, r2 resistance.
+    wt = initializeMutationType("m1", 0.5, "f", 0.0);
+    dr = initializeMutationType("m2", 0.5, "f", 0.0);
+    r1 = initializeMutationType("m3", 0.5, "f", 0.0);
+    r2 = initializeMutationType("m4", 0.5, "f", 0.0);
+    variations = c(wt, dr, r1, r2);
+
+    // Variations are all part of g1 genome element.
+    initializeGenomicElementType("g1", variations, c(1, 1, 1, 1));
+
+    // Element is consists of one locus representing a CRISPR gRNA target location.
+    initializeGenomicElement(g1, 0, 0);
+
+    // These variations overwrite one another.
+    variations.mutationStackPolicy = "l";
+    variations.mutationStackGroup = 1;
+
+    // No mutation or recombination in this model.
+    initializeMutationRate(0.0);
+    initializeRecombinationRate(0.0);
+
+    // Simulate sexual reproduction: A for autosome.
+    initializeSex("A");
+}
+
+//// A HELPER FUNCTION FOR SETTING CONSTANTS THAT MIGHT BE CONFIGURED VIA COMMAND LINE.
+function (void) defineCfgParam(string$ name, lifs value) {
+    if (!exists(name))
+        defineConstant(name, value);
+}
+
+//// HELPER FUNCTION FOR FORMING A RESISTANCE ALLELE AT A GIVEN LOCUS.
+function (void)addResistanceAllele(o<Genome>$ genome, i$ locus) {
+    // Resistance alleles form at a specified rate.
+    // m3 is R1 allele, m4 is R2.
+    if(runif(1) < R1_OCCURRENCE_RATE)
+        genome.addNewDrawnMutation(m3, locus);
+    else
+        genome.addNewDrawnMutation(m4, locus);
+}
+
+//// FUNCTION FOR GERMLINE RESISTANCE AND HOMING DRIVE.
+function (void)germline(o<Genome>$ child_chromosome, o<Individual>$ parent, f$ resistance_rate) {
+    // Determine presence of drive in this parent and wt in the chromosome inherited from this parent.
+    if (sum(parent.genomes.countOfMutationsOfType(m2)) & sum(child_chromosome.countOfMutationsOfType(m1))) {
+        if (runif(1) < resistance_rate)
+            // Resistance forms:
+            addResistanceAllele(child_chromosome, 0);
+        else if (runif(1) < HOMING_SUCCESS_RATE)
+            // Homing succeeds:
+            child_chromosome.addNewDrawnMutation(m2, 0);
+    }
+}
+
+//// GENE DRIVE IMPLEMENTATION RULES THAT OCCUR IN EVERY CHILD.
+1: modifyChild() {
+    // Apply effects that happen in the germline.
+    germline(childGenome1, parent1, RESISTANCE_FORMATION_RATE);
+    germline(childGenome2, parent2, RESISTANCE_FORMATION_RATE);
+    return T;
+}
+
+//// AGE BASED SURVIVAL RULES.
+late() {
+    sim.subpopulations.individuals.fitnessScaling = 0;
+}
+
+//// RULES FOR FITNESS BASED ON GENOTYPE.
+function (f$)genotypeFitness(o<Individual>$ ind) {
+    // Representation of the fitness value of the two chromosomes.
+    c1_value = 1.0;
+    c2_value = 1.0;
+    // Check both chromosomes for the drive.
+    if (ind.genome1.countOfMutationsOfType(m2))
+        c1_value = DRIVE_FITNESS;
+    if (ind.genome2.countOfMutationsOfType(m2))
+        c2_value = DRIVE_FITNESS;
+    // Return fitness for individual with this genotype.
+    return sqrt(c1_value * c2_value);
+}
+
+//// FUNCTION FOR EVALUATING INFERTILITY CAUSED BY SUPRESSION DRIVES.
+function (logical)isInfertile(o<Individual>$ ind) {
+    // In the recessive female sterility drive, drive/drive females are sterile.
+    // r2 also contributes to sterility.
+    if (RECESSIVE_FEMALE_STERILE_SUPPRESSION) {
+        dr_count = sum(ind.genomes.countOfMutationsOfType(m2));
+        r2_count = sum(ind.genomes.countOfMutationsOfType(m4));
+            if (dr_count + r2_count == 2)
+                return T;
+    }
+    return F;
+}
+
+//// REPRODUCTION RULES FOR EACH FEMALE.
+reproduction(NULL, "F") {
+    // First, evaluate whether reproduction is suppressed by a population suppression drive,
+    // Then, select a mate based on fitness, then generate offspring.
+
+    // Check to see if this female is infertile because of drive mechanics:
+    if (isInfertile(individual))
+        return;
+
+    // Females choose a random provisional mate, but make a final mating decision based on the
+    // attractiveness of that mate, as determined by the fitness of the mate. If a mate is
+    // rejected, the female tries again, up to a maximum number of tries, after which she gives up.
+    attempt_no = 0;
+    while (1) {
+        // First, select a random potential mate.
+        selected_mate = subpop.sampleIndividuals(1, sex="M");
+        if (!selected_mate.size())
+            return;  // No available mates.
+
+        // Determine attractiveness of potential mate.
+        mate_attractiveness = genotypeFitness(selected_mate);
+
+        // Determine if this mate is chosen, based on attractiveness.
+        if (runif(1) < mate_attractiveness)
+            break;  // Select this mate.
+        // After ten candidates fail, female gives up.
+        attempt_no = attempt_no + 1;
+        if (attempt_no > 9)
+            return;
+    }
+    // Mate has now been selected.
+    // Fecundity is based on both the crowding/competition in the system, as well as female fitness.
+    // Number of offspring number based on binomial distrobution.
+    capacity_fitness_scaling = 10 / ((9 * p1.individualCount / CAPACITY) + 1);
+    p = genotypeFitness(individual) * capacity_fitness_scaling * 0.04;
+    num_offspring = rbinom(1, 50, p);
+
+    for (i in seqLen(num_offspring)) {
+        // Add offspring to the subpopulation.
+        offspring = subpop.addCrossed(individual, selected_mate);
+    }
+}
+
+//// START THE SIMULATION BY ADDING AN INITIAL WILD POPULATION.
+1 {
+    // Start with a population of wild type flies.
+    sim.addSubpop("p1", CAPACITY);
+    p1.individuals.genomes.addNewDrawnMutation(m1, 0);
+}
+
+//// DROP A GROUP OF MODIFIED INDIVIDUALS INTO THE POPULATION.
+6 {
+    sim.addSubpop("p2", DROP_SIZE);
+    drop = p2.individuals;
+    // Now set the drop individuals to the correct genotypes:
+    drop.genomes.addNewDrawnMutation(m2, 0);
+    // Now that genes have been set, move all the individuals from the drop into p1:
+    p1.takeMigrants(drop);
+}
+
+//// PROGRAM OUTPUT.
+106 late() {
+    // Calculate rates:
+    all = sim.subpopulations.individuals;
+    num_wt = sum(all.genomes.countOfMutationsOfType(m1));
+    num_dr = sum(all.genomes.countOfMutationsOfType(m2));
+    num_r1 = sum(all.genomes.countOfMutationsOfType(m3));
+    num_r2 = sum(all.genomes.countOfMutationsOfType(m4));
+    num_has_drive = sum(all.genome1.countOfMutationsOfType(m2)
+                      | all.genome2.countOfMutationsOfType(m2));
+
+    rate_wt = num_wt / (2 * size(all));
+    rate_dr = num_dr / (2 * size(all));
+    rate_r1 = num_r1 / (2 * size(all));
+    rate_r2 = num_r2 / (2 * size(all));
+    rate_has_drive = num_has_drive / (size(all));
+
+    if (size(all))
+        catn("OUT:" + HOMING_SUCCESS_RATE + "," + RESISTANCE_FORMATION_RATE + ","
+             + rate_wt + "," + rate_dr + "," + rate_r1 + "," + rate_r2 + "," + rate_has_drive + "," + size(all));
+    else
+        catn("OUT:" + HOMING_SUCCESS_RATE + "," + RESISTANCE_FORMATION_RATE + ",0,0,0,0,0,0");
+    sim.simulationFinished();
+}
+
