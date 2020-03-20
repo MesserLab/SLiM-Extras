@@ -9,14 +9,14 @@
 #  the SLiM-Extras repository at https://github.com/MesserLab/SLiM-Extras.
 #  Thank you.
 
-import multiprocessing
+from multiprocessing import cpu_count
 
 # Genearte a shell script to run a large array of SLiM simulations locally in parallel.
 homing = 0.5
 res = 0.0
 print_header = True
 run_number = 1
-max_simultaneous_procs = multiprocessing.cpu_count()
+max_simultaneous_procs = cpu_count()
 print("#!/bin/bash\nmkdir -p py_data")
 for homing_steps in range(11):
     for resistance_steps in range(11):
