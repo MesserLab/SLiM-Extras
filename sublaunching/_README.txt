@@ -4,4 +4,4 @@ basic_r_usage_aggregateLocalAncestry.R : R script to replicate recipe 13.9 1000 
 
 basic_python_usage_gen_replicates.py : Python script to perform replicated runs and tabulate a binary metric from their output
 
-external_running_tutorial : a tutorial on sublaunching via BASH, Python, or R that demonstrates a full workflow for running an included demo SLiM file through a grid of parameters.
+sublaunching_tutorial : a tutorial on sublaunching via BASH, Python, or R that demonstrates a full workflow for running an included demo SLiM file through a grid of parameters.
