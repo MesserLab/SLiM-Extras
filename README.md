@@ -9,6 +9,7 @@ This repository is for all sorts of extras associated with SLiM that others migh
 - full SLiM models that we don't want to include as recipes in the manual, but that might nevertheless be useful
 - code for reading or analyzing SLiM output, or translating it into other file formats
 - code for sublaunching multiple SLiM processes in various computing cluster environments, for replication or exploration of a parameter space
+- installation scripts and related information
 - anything else we can think of, really.
 
 Contributions to SLiM-Extras from SLiM users are welcome; if you have done something related to SLiM that you think others in the community might find useful, please consider contributing it here, either with a pull request on GitHub, or just by emailing us a submission.

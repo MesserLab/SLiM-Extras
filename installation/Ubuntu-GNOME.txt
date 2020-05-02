@@ -1,0 +1,105 @@
+Desktop environment installation instructions for QtSLiM on Ubuntu 18.04 LTS (GNOME)
+------------------------------------------------------------------------------------
+
+Benjamin C. Haller
+Messer Lab, Cornell University
+1 May 2020
+
+
+This file is parallel to section 2.2.3 of the SLiM manual, which has further discussion and description of the steps.
+
+
+========== Step 1.1: Configure the text/slim MIME type:
+
+mkdir -p ~/.local/share/mime/packages/
+gedit ~/.local/share/mime/packages/qtslim-slim.xml
+
+enter the following text, save, and close the text editor:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/slim">
+         <comment>SLiM script</comment>
+         <sub-class-of type="text/plain"/>
+         <icon>text-slim</icon>
+         <glob pattern="*.slim"/>
+  </mime-type>
+</mime-info>
+
+
+========== Step 1.2: Update the MIME database with the new info:
+
+sudo update-mime-database ~/.local/share/mime/
+
+
+========== Step 2: Register the MIME filename extension:
+
+gedit admin:///etc/mime.types
+
+add the following line, at the correct alphabetical position:
+
+text/slim			slim
+
+
+========== Step 3.1: Copy in icons for QtSLiM and .slim files:
+
+sudo mkdir -p /usr/share/icons/Humanity/mimes/48/
+sudo mkdir -p /usr/share/icons/Humanity/apps/16/
+sudo mkdir -p /usr/share/icons/Humanity/apps/22/
+sudo mkdir -p /usr/share/icons/Humanity/apps/24/
+sudo mkdir -p /usr/share/icons/Humanity/apps/32/
+sudo mkdir -p /usr/share/icons/Humanity/apps/48/
+sudo mkdir -p /usr/share/icons/Humanity/apps/64/
+
+cd <SLiM_repo>/QtSLiM
+
+sudo cp DocIcon.svg /usr/share/icons/Humanity/mimes/48/text-slim.svg
+sudo cp AppIcon16.svg /usr/share/icons/Humanity/apps/16/MesserLab-qtslim.svg
+sudo cp AppIcon22.svg /usr/share/icons/Humanity/apps/22/MesserLab-qtslim.svg
+sudo cp AppIcon24.svg /usr/share/icons/Humanity/apps/24/MesserLab-qtslim.svg
+sudo cp AppIcon32.svg /usr/share/icons/Humanity/apps/32/MesserLab-qtslim.svg
+sudo cp AppIcon48.svg /usr/share/icons/Humanity/apps/48/MesserLab-qtslim.svg
+sudo cp AppIcon64.svg /usr/share/icons/Humanity/apps/64/MesserLab-qtslim.svg
+
+
+========== Step 3.2: Update the icon database with the new icons:
+
+sudo gtk-update-icon-cache /usr/share/icons/Humanity -f
+
+
+========== Step 4: Make XML file for QtSLiM:
+
+mkdir -p ~/.local/share/applications/
+gedit ~/.local/share/applications/org.messerlab.qtslim.desktop
+
+enter the following text, save, and close the text editor:
+
+[Desktop Entry]
+Type=Application
+Exec="/usr/local/bin/QtSLiM" %F
+Name=QtSLiM
+GenericName=The SLiM modeling environment.
+Icon=MesserLab-qtslim.svg
+StartupWMClass=qtslim
+Terminal=false
+Categories=Science;Biology;
+MimeType=text/slim;text/plain;
+
+
+========== Step 5: Register the MIME type for the app:
+
+gedit ~/.config/mimeapps.list
+
+add the following line, at the end of the file:
+
+text/slim=org.messerlab.qtslim.desktop;
+
+
+========== Step 6: REBOOT
+
+
+And you're done!
+
+
+
+

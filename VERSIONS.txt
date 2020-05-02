@@ -1,5 +1,9 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+1 May 2020: add Ubuntu/GNOME desktop environment installation instructions for QtSLiM
+
+20 Mar. 2020: add sublaunching tutorial by Sam Champer
+
 2 Dec. 2019: add Recipe_15.10_PNG_map.[png|R] to the models folder
 
 27 Sept. 2019: add Recipe_15.10_OnLand.slim to the models folder
