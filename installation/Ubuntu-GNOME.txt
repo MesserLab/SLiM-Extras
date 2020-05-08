@@ -64,7 +64,7 @@ sudo cp AppIcon64.svg /usr/share/icons/Humanity/apps/64/MesserLab-qtslim.svg
 
 ========== Step 3.2: Update the icon database with the new icons:
 
-sudo gtk-update-icon-cache /usr/share/icons/Humanity -f
+sudo gtk-update-icon-cache /usr/share/icons/Humanity -f -t
 
 
 ========== Step 4: Make XML file for QtSLiM:
