@@ -51,7 +51,7 @@ sudo mkdir -p /usr/share/icons/Humanity/apps/32/
 sudo mkdir -p /usr/share/icons/Humanity/apps/48/
 sudo mkdir -p /usr/share/icons/Humanity/apps/64/
 
-cd <SLiM_repo>/QtSLiM
+cd <SLiM_repo>/QtSLiM/icons
 
 sudo cp DocIcon.svg /usr/share/icons/Humanity/mimes/48/text-slim.svg
 sudo cp AppIcon16.svg /usr/share/icons/Humanity/apps/16/MesserLab-qtslim.svg
