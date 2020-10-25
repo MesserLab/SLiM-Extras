@@ -15,7 +15,7 @@ Ben Haller and Philipp Messer, the authors of this code, hereby place the code i
 
 /*
 
-  Given width, height, radius, and corridor, this returns a generated spatial map of dimensions width and height consisting of two discs of radius, connected by a strip of width 2*corridor.  See recipe 14.10 for an example of how such a map might be used.  In particular, you might use it in a 2D model as initialized with:
+  Given width, height, radius, and corridor, this returns a generated spatial map of dimensions width and height consisting of two discs of radius, connected by a strip of width 2*corridor.  See recipe 15.10 for an example of how such a map might be used.  In particular, you might use it in a 2D model as initialized with:
 
 	initializeSLiMOptions(dimensionality="xy");
 
@@ -24,12 +24,12 @@ and then set it up in generation 1 with code like:
 	p1.setSpatialBounds(c(0.0, 0.0, width, height));
 	mapValues = twoHabitatMap(width, height, radius, corridor);
 	
-	p1.defineSpatialMap("world", "xy", NULL, mapValues,
+	p1.defineSpatialMap("world", "xy", mapValues,
 		valueRange=c(0.0, 1.0), colors=c("#0000CC", "#55FF22"));
 
   Recipe 14.10's code for preventing dispersal into "water" would also be useful.  See also recipe 15.10 for using spatial maps in a nonWF framework, which might be more appropriate.
 
-  The point of this "extra" is to show that spatial maps for specific purposes can be generated in code fairly easy, rather than being read in from a file as in recipe 14.10.  The ability of Eidos to manipulate 2D matrices (see the Eidos manual for documentation on this) is quite useful here, as it allows the map to be constructed using a few simple vectorized operations, rather than with (very slow) looping over every (x,y) coordinate.
+  The point of this "extra" is to show that spatial maps for specific purposes can be generated in code fairly easy, rather than being read in from a file as in recipe 15.10.  The ability of Eidos to manipulate 2D matrices (see the Eidos manual for documentation on this) is quite useful here, as it allows the map to be constructed using a few simple vectorized operations, rather than with (very slow) looping over every (x,y) coordinate.
 
   Note that the “corridor” parameter to the twoHabitatMap() function in my example script is *half* the width, in map pixels, of the corridor that gets drawn; that might not be obvious.  The given script does not allow a corridor that has an odd width, since the supplied width gets doubled; that could of course be fixed, but I wanted to keep the implementation simple for maximal comprehensibility.
 
@@ -51,10 +51,10 @@ function (f)twoHabitatMap(i$ width, i$ height, i$ radius, i$ corridor)
 	// draw the habitat circles at (cx1, cy) and (cx2, cy)
 	// we do this with some simple matrix-based logic
 	xv1 = (seqLen(width) + 0.5 - cx1) ^ 2;
-	xd1 = matrix(rep(xv1, height), height, width, byrow=T);
+	xd1 = matrix(repEach(xv1, height), height, width, byrow=F);
 	
 	xv2 = (seqLen(width) + 0.5 - cx2) ^ 2;
-	xd2 = matrix(rep(xv2, height), height, width, byrow=T);
+	xd2 = matrix(repEach(xv2, height), height, width, byrow=F);
 	
 	yv = (seqLen(height) + 0.5 - cy) ^ 2;
 	yd = matrix(rep(yv, width), height, width, byrow=F);
@@ -75,5 +75,5 @@ function (f)twoHabitatMap(i$ width, i$ height, i$ radius, i$ corridor)
 	insideCorridor = xcorridor & ycorridor;
 	
 	// the final map is a merge of the circles and the corridor
-	return t(asFloat(insideCircles | insideCorridor));
+	return asFloat(insideCircles | insideCorridor);
 }

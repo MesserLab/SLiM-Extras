@@ -69,7 +69,7 @@ function (float)generateLandscape(f$ slope, f$ curvature, f$ amplitude, f$ aclen
 	m = asFloat(strsplit(m, " "));
 	m = m - mean(m);                // center to have a mean of 0
 	l = asInteger(sqrt(size(m)));   // note, may or may not be 64
-	m = matrix(m, nrow=l, ncol=l, byrow=T);
+	m = matrix(m, nrow=l, ncol=l, byrow=F);
 	catn("// generated landscape is " + l + " x " + l);
 	catn("//    range [" + min(m) + ", " + max(m) + "]");
 	catn("//    sd " + sd(m));
@@ -83,7 +83,7 @@ function (float)generateLandscape(f$ slope, f$ curvature, f$ amplitude, f$ aclen
 	
 	// Generate an autocorrelated landscape map
 	m = generateLandscape(slope=0.5, curvature=0.0, amplitude=0.1, aclength=0.03);
-	p1.defineSpatialMap("map1", "xy", NULL, m, interpolate=T,
+	p1.defineSpatialMap("map1", "xy", m, interpolate=T,
 		valueRange=c(-0.5, 0.5), colors=c("red", "yellow"));
 }
 modifyChild() {

@@ -1,5 +1,7 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+25 Oct. 2020: revised various bits to work with the new defineSpatialMap() semantics of SLiM 3.5
+
 1 May 2020: add Ubuntu/GNOME desktop environment installation instructions for QtSLiM
 
 20 Mar. 2020: add sublaunching tutorial by Sam Champer
