@@ -1,5 +1,7 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+17 Nov. 2020: removing the calcFST() function since it is now built in to SLiM
+
 25 Oct. 2020: revised various bits to work with the new defineSpatialMap() semantics of SLiM 3.5
 
 1 May 2020: add Ubuntu/GNOME desktop environment installation instructions for QtSLiM
