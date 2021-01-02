@@ -1,5 +1,7 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+2 Jan. 2021: adding the DebianUbuntuInstall.sh script for easy Debian/Ubuntu installation
+
 21 Nov. 2020: removing genomicHeterozygosity() / subpopHeterozygosity() since they are now built into SLiM
 
 17 Nov. 2020: removing the calcFST() function since it is now built in to SLiM
