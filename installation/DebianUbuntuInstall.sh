@@ -43,28 +43,29 @@ if [[ -d /tmp/BUILD/ ]]; then
 fi
 
 if [[ $curlinstalled == 0 ]]; then
-	curl http://benhaller.com/slim/SLiM.zip > SLiM.zip && unzip SLiM.zip || printf "Failed to download SLiM.zip or unzip it.\n"; exit
+	curl http://benhaller.com/slim/SLiM.zip > SLiM.zip && unzip SLiM.zip || { printf "Failed to download SLiM.zip or unzip it.\n"; exit;}
 elif [[ $wgetinstalled == 0 ]]; then
-	wget http://benhaller.com/slim/SLiM.zip && unzip SLiM.zip || printf "Failed to download SLiM.zip or unzip it.\n"; exit
+	wget http://benhaller.com/slim/SLiM.zip && unzip SLiM.zip || { printf "Failed to download SLiM.zip or unzip it.\n"; exit;}
 else { exit;} #Exit if neither curl nor wget is installed.
 fi
 
 # Proceed with building and installing if all tests succeeded.
 mkdir BUILD; cd BUILD
-cmake -D BUILD_SLIMGUI=ON ../SLiM && make || printf "Build failed. Please see the output and make a post on the slim-discuss mailing list.\n"; mv /tmp/BUILD/CMakeFiles/CMakeOutput.log ~/.SLiM_CMakeOutput.log; exit
+cmake -D BUILD_SLIMGUI=ON ../SLiM && make || { printf "Build failed. Please see the output and make a post on the slim-discuss mailing list.\n"; mv /tmp/BUILD/CMakeFiles/CMakeOutput.log ~/.SLiM_CMakeOutput.log; exit;}
 
-mkdir -p /usr/bin /usr/share/icons/hicolor/scalable/apps/ /usr/share/icons/hicolor/scalable/mimetypes /usr/share/mime/packages /usr/share/applications /usr/share/metainfo/
-install slim eidos SLiMgui /usr/bin
+{ mkdir -p /usr/bin /usr/share/icons/hicolor/scalable/apps/ /usr/share/icons/hicolor/scalable/mimetypes /usr/share/mime/packages /usr/share/applications /usr/share/metainfo/;} || { echo "Some directory necessary for installation was not successfully created. Please see the output and make a post on the slim-discuss mailing list."; exit;}
+
+# Exit if installation unsuccessful.
+install slim eidos SLiMgui /usr/bin || { echo "Installation to /usr/bin was unsuccessful. Please see the output and make a post on the slim-discuss mailing list."; exit;}
+echo "Installation to /usr/bin was successful. Proceeding with desktop integration.\n";
 	
-mv ../SLiM/QtSLiM/icons/AppIcon64.svg /usr/share/icons/hicolor/scalable/apps/org.messerlab.slimgui
-mv ../SLiM/QtSLiM/icons/DocIcon.svg /usr/share/icons/hicolor/scalable/mimetypes/text-slim.svg
-mv ../SLiM/org.messerlab.slimgui-mime.xml /usr/share/mime/packages/
-mv ../SLiM/org.messerlab.slimgui.desktop /usr/share/applications/
-mv ../SLiM/org.messerlab.slimgui.appdata.xml /usr/share/metainfo/
+{ mv ../SLiM/QtSLiM/icons/AppIcon64.svg /usr/share/icons/hicolor/scalable/apps/org.messerlab.slimgui;
+mv ../SLiM/QtSLiM/icons/DocIcon.svg /usr/share/icons/hicolor/scalable/mimetypes/text-slim.svg;
+mv ../SLiM/org.messerlab.slimgui-mime.xml /usr/share/mime/packages/;
+mv ../SLiM/org.messerlab.slimgui.desktop /usr/share/applications/;
+mv ../SLiM/org.messerlab.slimgui.appdata.xml /usr/share/metainfo/;
+update-mime-database -n /usr/share/mime/;
+xdg-mime install --mode system /usr/share/mime/packages/org.messerlab.slimgui-mime.xml;} || { echo "Desktop integration failed. Please see the output and make a post on the slim-discuss mailing list."; exit;}
+echo "Desktop integration was successful. Temporary files will be removed."
 
-update-mime-database -n /usr/share/mime/
-xdg-mime install --mode system /usr/share/mime/packages/org.messerlab.slimgui-mime.xml
-cd ~; rm -Rf /tmp/SLiM/ /tmp/BUILD/ /tmp/SLiM.zip
-
-# Confirm success
-if [[ $? == 0 ]]; then echo "Installation was successful. Proceeding with desktop integration.\n"; fi
+cd ~; rm -Rf /tmp/SLiM/ /tmp/BUILD/ /tmp/SLiM.zip || echo "Could not remove temporary files."
