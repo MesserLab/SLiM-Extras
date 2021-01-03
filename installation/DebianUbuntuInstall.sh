@@ -51,13 +51,13 @@ fi
 
 # Proceed with building and installing if all tests succeeded.
 mkdir BUILD; cd BUILD
-cmake -D BUILD_SLIMGUI=ON ../SLiM && make || { printf "Build failed. Please see the output and make a post on the slim-discuss mailing list.\n"; mv /tmp/BUILD/CMakeFiles/CMakeOutput.log ~/.SLiM_CMakeOutput.log; exit;}
+cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j$(nproc) || { printf "Build failed. Please see the output and make a post on the slim-discuss mailing list.\n"; mv /tmp/BUILD/CMakeFiles/CMakeOutput.log ~/.SLiM_CMakeOutput.log; exit;}
 
 { mkdir -p /usr/bin /usr/share/icons/hicolor/scalable/apps/ /usr/share/icons/hicolor/scalable/mimetypes /usr/share/mime/packages /usr/share/applications /usr/share/metainfo/;} || { echo "Some directory necessary for installation was not successfully created. Please see the output and make a post on the slim-discuss mailing list."; exit;}
 
 # Exit if installation unsuccessful.
 install slim eidos SLiMgui /usr/bin || { echo "Installation to /usr/bin was unsuccessful. Please see the output and make a post on the slim-discuss mailing list."; exit;}
-echo "Installation to /usr/bin was successful. Proceeding with desktop integration.\n";
+echo "Installation to /usr/bin was successful. Proceeding with desktop integration.";
 	
 { mv ../SLiM/QtSLiM/icons/AppIcon64.svg /usr/share/icons/hicolor/scalable/apps/org.messerlab.slimgui;
 mv ../SLiM/QtSLiM/icons/DocIcon.svg /usr/share/icons/hicolor/scalable/mimetypes/text-slim.svg;
