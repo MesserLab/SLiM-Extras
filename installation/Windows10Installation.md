@@ -5,6 +5,8 @@
 1) Install [WSL 2](https://docs.microsoft.com/en-us/windows/wsl/install-win10) (the Windows Subsystem for Linux "2").
 
     - Users on the Windows "Insider Build" can simply execute `wsl --install` in a PowerShell prompt, apparently.
+    - Open Debian once before proceeding to Step 2; you'll create a user account (which will automatically have administrator privileges) in Debian.
+    	- This is also the step wherein you'd discover an error _if_ you failed to run the Linux Kernel update from Microsoft (Step Four of the _WSL Manual Installation_ procedure).
 
 2) Install [GWSL](https://www.microsoft.com/en-ca/p/gwsl/9nl6kd1h33v3?activetab=pivot:overviewtab) and [Debian](https://www.microsoft.com/en-ca/p/debian/9msvkqc78pk6?activetab=pivot:overviewtab) from the Windows Store.
 
