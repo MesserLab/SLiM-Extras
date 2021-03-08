@@ -45,7 +45,7 @@
     sudo apt install curl unzip g++ cmake qt5-qmake qt5-default xdg-utils firefox-esr
     ```
 
-3) In a Debian terminal, execute this piped command:
+3) Install SLiMgui by executing this piped command:
 
     ```bash
     curl https://raw.githubusercontent.com/MesserLab/SLiM-Extras/master/installation/DebianUbuntuInstall.sh | sudo bash -s
