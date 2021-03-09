@@ -15,7 +15,9 @@
 3) Open the GWSL Dashboard by left-clicking on its system tray icon (press the primary mouse button).
 
     a) If prompted by Windows to allow access through the Firewall, allow acess Private networks (such as your home Wi-Fi).
+    
     b) Select the _GWSL Distro Tools_ menu option.
+    
     c) Under the 'Configure Debian' header, ensure the first line reads "Display is set to Auto-export"; if not, select that option and accept the changes; Debian will restart.
 	
 4) Right-click the GWSL system tray icon (press the secondary mouse button).
