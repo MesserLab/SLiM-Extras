@@ -31,6 +31,8 @@
 7) Copy this information into the "VcXsrv Flags:" text field:
 	`-nowgl -compositewm -multiwindow -clipboard -primary`
 
+	a) Make the new profile the _active profile_ by opening the XServer Profiles menu as in Step 5 and selecting the new profile.
+
 <h3>Install SLiMgui</h3>
 
 1) Update Debian in the Debian terminal window opened in _Step 3-a_:
