@@ -1,4 +1,4 @@
-<h1><p align="center">Experimental Windows 10 Installation Procedure</p></h1>
+<h1><p align="center">Windows 10 Installation Procedure</p></h1>
 
 <h3>Install a Linux Subsystem with Graphical Support</h3>
 
