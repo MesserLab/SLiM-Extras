@@ -40,7 +40,7 @@
 
 <h3>Install SLiMgui</h3>
 
-1) Update Debian in the Debian terminal window opened in _Step 3-a_:
+1) Update Debian in the Debian terminal window opened in _Step 5-a_:
     
     ```bash
     sudo apt update && sudo apt upgrade
