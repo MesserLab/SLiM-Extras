@@ -6,32 +6,35 @@
 
     - Users on the Windows "Insider Build" can simply execute `wsl --install` in a PowerShell prompt, apparently.
     
-2) Install [GWSL](https://www.microsoft.com/en-ca/p/gwsl/9nl6kd1h33v3?activetab=pivot:overviewtab) and [Debian](https://www.microsoft.com/en-ca/p/debian/9msvkqc78pk6?activetab=pivot:overviewtab) from the Windows Store.
+2) Install [Debian](https://www.microsoft.com/en-ca/p/debian/9msvkqc78pk6?activetab=pivot:overviewtab) and [GWSL](https://www.microsoft.com/en-ca/p/gwsl/9nl6kd1h33v3?activetab=pivot:overviewtab) from the Windows Store.
 
     - GWSL is a utility providing an easy way to launch your graphical Linux applications, and it provides an XServer on Windows, which is required to run SLiMgui.
-    - **Open Debian once before proceeding to Step 3; you'll create a user account (which will automatically have administrator privileges) in Debian.**
-    	- This is also the step wherein you'd discover an error _if_ you failed to run the Linux Kernel update from Microsoft (Step Four of the _WSL Manual Installation_ procedure).
+    - **Open Debian once before proceeding to Step 3; you'll create a user account (which will automatically have administrator privileges) in Debian.** If you followed the _WSL Manual Installation_ procedure exactly, you will have already done this.
+    - This is also the step wherein you'd discover an error _if_ you failed to run the Linux Kernel update from Microsoft (Step Four of the _WSL Manual Installation_ procedure).
 
 3) Open the GWSL Dashboard by left-clicking on its system tray icon (press the primary mouse button).
 
-    a) Click "Linux Shell" to open a terminal that will be used later.
+    a) If prompted by Windows to allow access through the Firewall, allow acess Private networks (such as your home Wi-Fi).
+    b) Select the _GWSL Distro Tools_ menu option.
+    c) Under the 'Configure Debian' header, ensure the first line reads "Display is set to Auto-export"; if not, select that option and accept the changes; Debian will restart.
 	
-4) Select the _GWSL Distro Tools_ menu option in the GWSL Dashboard.
-  
-	  a) Under the 'Configure Debian' header, ensure the first line reads "Display is set to Auto-export".
-    
-5) Right-click the GWSL system tray icon (press the secondary mouse button).
+4) Right-click the GWSL system tray icon (press the secondary mouse button).
 
 	a) Select the "XServer Profiles" menu option.
   
 	b) Select "Add A Profile".
   
-6) Type a descriptive profile name, such as "OpenGL" or "SLiMgui OpenGL".
+	c) Type a descriptive profile name, such as "OpenGL" or "SLiMgui OpenGL".
 
-7) Copy this information into the "VcXsrv Flags:" text field:
-	`-nowgl -compositewm -multiwindow -clipboard -primary`
+	d) Copy this information into the "VcXsrv Flags:" text field:
+	
+		`-nowgl -compositewm -multiwindow -clipboard -primary`
 
-	a) Make the new profile the _active profile_ by opening the XServer Profiles menu as in Step 5 and selecting the new profile.
+	e) Make the new profile the _active profile_ by opening the XServer Profiles menu as in Step 5 and selecting the new profile.
+
+7)  Reopen the GWSL Dashboard.
+
+	a) Open a Linux Shell
 
 <h3>Install SLiMgui</h3>
 
