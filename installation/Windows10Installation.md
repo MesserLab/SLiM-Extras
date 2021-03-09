@@ -30,10 +30,8 @@
 
 	d) Copy this information into the "VcXsrv Flags:" text field:
 	
-		```
 		-nowgl -compositewm -multiwindow -clipboard -primary
-		```
-
+		
 	e) Make the new profile the _active profile_ by opening the XServer Profiles menu as in Step 5 and selecting the new profile.
 
 7)  Reopen the GWSL Dashboard.
