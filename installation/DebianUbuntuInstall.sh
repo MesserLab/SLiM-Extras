@@ -31,7 +31,7 @@ unset wgetinstalled; dpkg-query -s wget 2>/dev/null | grep -q ^"Status: install 
 [[ $curlinstalled == 0 || $wgetinstalled == 0 ]] || printf "Neither curl nor wget are installed.\nInstall either with one of:\n'sudo apt install wget', OR\n'sudo apt install curl'.\n"
 [[ $defaultinstalled == 0 && $qmakeinstalled == 0 && $cmakeinstalled == 0 ]] || exit #Exit if qt5-default, qt5-qmake, or cmake are not installed. If neither curl nor wget are installed, we exit later.
 
-cd /tmp
+cd /tmp || { printf "The Filesystem Hierarchy-standard directory /tmp does not exist.\nResolve the issue by creating that directory; inspect this script, and your system,\nas other issues may exist." ; exit ;}
 if [[ -f SLiM.zip ]]; then
 	printf "/tmp/SLiM.zip already exists! Please delete the file to use this script.\n"
 	exit
@@ -43,15 +43,15 @@ if [[ -d /tmp/BUILD/ ]]; then
 fi
 
 if [[ $curlinstalled == 0 ]]; then
-	curl http://benhaller.com/slim/SLiM.zip > SLiM.zip && unzip SLiM.zip || { printf "Failed to download SLiM.zip or unzip it.\n"; exit;}
+	{ curl http://benhaller.com/slim/SLiM.zip > SLiM.zip && unzip SLiM.zip ;} || { printf "Failed to download SLiM.zip or unzip it.\n"; exit;}
 elif [[ $wgetinstalled == 0 ]]; then
-	wget http://benhaller.com/slim/SLiM.zip && unzip SLiM.zip || { printf "Failed to download SLiM.zip or unzip it.\n"; exit;}
+	{ wget http://benhaller.com/slim/SLiM.zip && unzip SLiM.zip ;} || { printf "Failed to download SLiM.zip or unzip it.\n"; exit;}
 else { exit;} #Exit if neither curl nor wget is installed.
 fi
 
 # Proceed with building and installing if all tests succeeded.
-mkdir BUILD; cd BUILD
-cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j$(nproc) || { printf "Build failed. Please see the output and make a post on the slim-discuss mailing list.\nThe output from this build is stored in '/var/log/' as SLiM-CMakeOutput-$(date -Is).log.\nYou may be asked to upload this file during a support request."; mv /tmp/BUILD/CMakeFiles/CMakeOutput.log /var/log/SLiM-CMakeOutput-$(date -Is).log; exit;}
+{ mkdir BUILD && cd BUILD ;} || { printf "Root is unable to create /tmp/BUILD. It likely already exists. Try again after deleting it."; exit ;}
+{ cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)" ;} || { printf "Build failed. Please see the output and make a post on the slim-discuss mailing list.\nThe output from this build is stored in '/var/log/' as SLiM-CMakeOutput-%s.log.\nYou may be asked to upload this file during a support request." "$(date -Is)"; mv /tmp/BUILD/CMakeFiles/CMakeOutput.log /var/log/SLiM-CMakeOutput-"$(date -Is)".log; exit;}
 
 { mkdir -p /usr/bin /usr/share/icons/hicolor/scalable/apps/ /usr/share/icons/hicolor/scalable/mimetypes /usr/share/mime/packages /usr/share/applications /usr/share/metainfo/;} || { echo "Some directory necessary for installation was not successfully created. Please see the output and make a post on the slim-discuss mailing list."; exit;}
 
@@ -68,4 +68,4 @@ update-mime-database -n /usr/share/mime/;
 xdg-mime install --mode system /usr/share/mime/packages/org.messerlab.slimgui-mime.xml;} || { echo "Desktop integration failed. Please see the output and make a post on the slim-discuss mailing list."; exit;}
 echo "Desktop integration was successful. Temporary files will be removed."
 
-cd ~; rm -Rf /tmp/SLiM/ /tmp/BUILD/ /tmp/SLiM.zip || echo "Could not remove temporary files."
+cd ~ || printf "For some reason could not change to ~ before deleting temporary directories."; rm -Rf /tmp/SLiM/ /tmp/BUILD/ /tmp/SLiM.zip || echo "Could not remove temporary files."
