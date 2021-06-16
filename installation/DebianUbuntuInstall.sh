@@ -22,11 +22,12 @@ fi
 # If any one requirement is unmet we say which.
 unset cmakeinstalled; dpkg-query -s cmake 2>/dev/null | grep -q ^"Status: install ok installed"$; cmakeinstalled=$?
 unset qmakeinstalled; dpkg-query -s qt5-qmake 2>/dev/null | grep -q ^"Status: install ok installed"$; qmakeinstalled=$?
-unset defaultinstalled; dpkg-query -s qt5-default 2>/dev/null | grep -q ^"Status: install ok installed"$; defaultinstalled=$?
+unset qtchooserinstalled; dpkg-query -s qtchooser 2>/dev/null | grep -q ^"Status: install ok installed"$; qtchooserinstalled=$?
+unset qtbase5devinstalled; dpkg-query -s qtbase5-dev 2>/dev/null | grep -q ^"Status: install ok installed"$; qtbase5devinstalled=$?
 unset curlinstalled; dpkg-query -s curl 2>/dev/null | grep -q ^"Status: install ok installed"$; curlinstalled=$?
 unset wgetinstalled; dpkg-query -s wget 2>/dev/null | grep -q ^"Status: install ok installed"$; wgetinstalled=$?
 
-[[ $defaultinstalled == 0  && $qmakeinstalled == 0 ]] || printf "Either or both of qt5-qmake and qt5-default are not installed.\nInstall the Qt5 requirements with 'sudo apt install qt5-default qt5-qmake'.\nInstalling both packages this way ensures all build\nand runtime requirements are satisfied.\n"
+[[ $qmakeinstalled == 0 && $qtchooserinstalled == 0 && $qtbase5devinstalled == 0]] || printf "All of: qt5-qmake, qtchooser, and qtbase5-dev must be installed.\nInstall the Qt5 requirements with 'sudo apt install qtbase5-dev qtchooser qt5-qmake'.\nInstalling these packages ensures all build\nand runtime requirements are satisfied.\n"
 [[ $cmakeinstalled == 0 ]] || printf "cmake is not installed.\nInstall it with 'sudo apt install cmake'.\n"
 [[ $curlinstalled == 0 || $wgetinstalled == 0 ]] || printf "Neither curl nor wget are installed.\nInstall either with one of:\n'sudo apt install wget', OR\n'sudo apt install curl'.\n"
 [[ $defaultinstalled == 0 && $qmakeinstalled == 0 && $cmakeinstalled == 0 ]] || exit #Exit if qt5-default, qt5-qmake, or cmake are not installed. If neither curl nor wget are installed, we exit later.
