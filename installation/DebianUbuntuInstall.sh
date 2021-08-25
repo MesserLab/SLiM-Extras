@@ -20,6 +20,7 @@ fi
 
 # Test that build requirements are satisfied.
 # If any one requirement is unmet we say which.
+unset defaultinstalled; dpkg-query -s qt5-default 2>/dev/null | grep -q ^"Status: install ok installed"$; defaultinstalled=$?
 unset cmakeinstalled; dpkg-query -s cmake 2>/dev/null | grep -q ^"Status: install ok installed"$; cmakeinstalled=$?
 unset qmakeinstalled; dpkg-query -s qt5-qmake 2>/dev/null | grep -q ^"Status: install ok installed"$; qmakeinstalled=$?
 unset qtchooserinstalled; dpkg-query -s qtchooser 2>/dev/null | grep -q ^"Status: install ok installed"$; qtchooserinstalled=$?
