@@ -30,7 +30,7 @@ unset wgetinstalled; dpkg-query -s wget 2>/dev/null | grep -q ^"Status: install 
 [[ $qmakeinstalled == 0 && $qtchooserinstalled == 0 && $qtbase5devinstalled == 0 ]] || printf "All of: qt5-qmake, qtchooser, and qtbase5-dev must be installed.\nInstall the Qt5 requirements with 'sudo apt install qtbase5-dev qtchooser qt5-qmake'.\nInstalling these packages ensures all build\nand runtime requirements are satisfied.\n"
 [[ $cmakeinstalled == 0 ]] || printf "cmake is not installed.\nInstall it with 'sudo apt install cmake'.\n"
 [[ $curlinstalled == 0 || $wgetinstalled == 0 ]] || printf "Neither curl nor wget are installed.\nInstall either with one of:\n'sudo apt install wget', OR\n'sudo apt install curl'.\n"
-[[ $defaultinstalled == 0 && $qmakeinstalled == 0 && $cmakeinstalled == 0 ]] || exit #Exit if qt5-default, qt5-qmake, or cmake are not installed. If neither curl nor wget are installed, we exit later.
+[[ $qtchooserinstalled == 0 && $qtbase5devinstalled == 0 && $qmakeinstalled == 0 && $cmakeinstalled == 0 ]] || exit #Exit if qtchooser, qtbase5-dev, qt5-qmake, or cmake are not installed. If neither curl nor wget are installed, we exit later.
 
 cd /tmp || { printf "The Filesystem Hierarchy-standard directory /tmp does not exist.\nResolve the issue by creating that directory; inspect this script, and your system,\nas other issues may exist." ; exit ;}
 if [[ -f SLiM.zip ]]; then
