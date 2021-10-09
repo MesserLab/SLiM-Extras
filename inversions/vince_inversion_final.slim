@@ -3,7 +3,7 @@ initialize() {
   defineConstant("region_length", 1000000);
   defineConstant("inv_length", 500000);
   defineConstant("inv_start", asInteger(region_length/2 - inv_length/2));
-  defineConstant("inv_end", asInteger(region_length/2 + inv_length/2));
+  defineConstant("inv_end", inv_start + inv_length - 1);
   defineConstant("N", 500);
   defineConstant("rbp", 1e-8);
 
