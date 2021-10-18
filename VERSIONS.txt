@@ -1,5 +1,7 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+8 Oct. 2021: add the inversions/ folder, with files related to the new inversion recipe, section 14.4
+
 27 Feb. 2021: removing the Ubuntu_18.04_GNOME.txt file since it is obsolete
 
 2 Jan. 2021: adding the DebianUbuntuInstall.sh script for easy Debian/Ubuntu installation
