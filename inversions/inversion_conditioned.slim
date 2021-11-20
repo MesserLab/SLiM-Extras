@@ -1,0 +1,137 @@
+initialize() {
+  defineConstant("seed", getSeed());
+
+  defineConstant("region_length", 1000000);
+  defineConstant("inv_length", 500000);
+  defineConstant("inv_start", asInteger(region_length/2 - inv_length/2));
+  defineConstant("inv_end", inv_start + inv_length - 1);
+  defineConstant("N", 500);
+  defineConstant("metadata", Dictionary());
+  metadata.setValue("rbp", rbp);
+  metadata.setValue("establish_freq", establish_freq);
+  metadata.setValue("N", N);
+
+  defineConstant("name", "inversion_rbp" + rbp + "_estfreq" +
+                 establish_freq + "_rep" + rep);
+  defineConstant("treeseq_file", "cond_results/" + name + ".trees");
+  defineConstant("tmp_file", "/tmp/" + name + ".tmp");
+  initializeTreeSeq();
+
+  initializeMutationRate(0);
+  initializeMutationType("m1", 0.5, "f", 0.0);  // inversion marker
+  initializeMutationType("m2", 0.5, "f", 0.0);  // inversion marker
+  initializeMutationType("m3", 0.5, "f", 0.0);  // neutral sites 
+  m1.convertToSubstitution = T;
+  m2.convertToSubstitution = T;
+  m1.color = "red";
+  m2.color = "red";
+
+  initializeGenomicElementType("g1", m3, 1.0);
+  initializeGenomicElement(g1, 0, asInteger(region_length)-1);
+  initializeRecombinationRate(rbp);
+  
+  // epoch timing
+  defineConstant("burnin", N); // burnin
+  // total possible run time -- with resets if lost
+  // 
+  defineConstant("run_time", burnin + 100*N);
+  defineConstant("inv_time", burnin); // when the inversion is added
+}
+
+
+1 early() {
+  sim.addSubpop("p1", N);
+
+  // s1 = the ancestral burnin
+  sim.rescheduleScriptBlock(s1, start=2, end=burnin-1);
+  // s2 = when the inverison occurs
+  sim.rescheduleScriptBlock(s2, start=inv_time, end=inv_time);
+  // s3 = the main loop
+  sim.rescheduleScriptBlock(s3, start=inv_time+1, end=run_time-1);
+}
+
+s1 {}
+
+s2 late() {
+  // store the current mutation
+  sim.treeSeqOutput(tmp_file);
+
+  // give one genome an inversion
+  inverted = sample(p1.genomes, 1);
+  inverted.addNewDrawnMutation(m1, inv_start);
+  inverted.addNewDrawnMutation(m2, inv_end);
+  catn("inversion added, gen="+sim.generation);
+  sim.outputFull(tmp_file);
+}
+
+
+s3 late() {
+  //catn("--> " + sim.generation);
+  ninvs = sum(p1.genomes.containsMarkerMutation(m1, inv_start));
+ 
+  // sanity check -- does the other inversion endpoint marker mutatation
+  // have the same number of counts?
+  ninvs2 = sum(p1.genomes.containsMarkerMutation(m2, inv_end));
+  msg = "differing number of endpoint markers ("+ninvs+", "+ninvs2+")";
+  //assert(ninvs == ninvs2, msg);
+
+  fixed = sum(sim.substitutions.mutationType == m1) > 0;
+  freqs = sim.mutationFrequencies(p1, mutations=sim.mutationsOfType(m1));
+  established = length(freqs) > 0 & any(freqs > establish_freq);
+  established = (fixed | established); // include fixations
+  loss = sim.countOfMutationsOfType(m1) == 0;
+  //sim.mutations;
+  msg = "more than two breakpoint mutations! (";
+  msg = msg + "gen="+sim.generation+", num="+length(sim.mutations)+", ";
+  msg = msg + "positions=["+paste(sim.mutations.position, sep=", ")+"], ";
+  msg = msg + "origin=["+paste(sim.mutations.originGeneration, sep=", ")+"])";
+  //assert(length(sim.mutations) <= 2, msg); // there should only be two breakpoints
+  if (loss | established) {
+    if (established) {
+      cat("inversion established! (seed: "+getSeed()+")");
+      sim.treeSeqOutput(treeseq_file, metadata=metadata);
+      sim.simulationFinished();
+    } else {
+      gen = sim.generation - inv_time;
+      //cat("inversion lost (after "+gen+" generations), restarting (seed: "+getSeed()+").\n");
+      // go back to generation 1000
+      sim.readFromPopulationFile(tmp_file);
+      // start a newly seeded run
+      setSeed(rdunif(1, 0, asInteger(2^62) - 1));      
+      // reintroduce an inversion
+      //assert(sim.countOfMutationsOfType(m1) == 0); // we should have no inversion endpoints!
+
+      //assert(sim.countOfMutationsOfType(m2) == 0); // we should have no inversion endpoints!
+      inverted = sample(p1.genomes, 1);
+      inverted.addNewDrawnMutation(m1, inv_start);
+      inverted.addNewDrawnMutation(m2, inv_end);
+    }
+  }
+ 
+}
+
+recombination() {
+  gm1 = genome1.containsMarkerMutation(m1, inv_start);
+  gm2 = genome2.containsMarkerMutation(m1, inv_start);
+  if (!(gm1 | gm2)) {
+    // homozygote non-inverted
+    return F;
+  }
+  inInv = (breakpoints > inv_start) & (breakpoints <= inv_end);
+  if (sum(inInv) % 2 == 0) {
+    return F;
+  }
+  if (gm1 & gm2) {
+    // homozygote inverted
+    left = (breakpoints == inv_start);
+    right = (breakpoints == inv_end + 1);
+    breakpoints = sort(c(breakpoints[!(left | right)], c(inv_start, inv_end + 1)[c(sum(left) == 0, sum(right) == 0)]));
+    return T;
+  } else {
+    // heterozygote inverted: resample to get on an even number of breakpoints
+    // this is *recursive*: it calls the recombination callback again!
+    breakpoints = sim.chromosome.drawBreakpoints(individual);
+  }
+  return T;
+}
+
