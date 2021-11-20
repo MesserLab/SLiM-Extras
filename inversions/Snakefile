@@ -1,0 +1,19 @@
+# ------- Netural (Conditioned on Establishment) Inversions -------
+cond_params = dict(rep=list(range(300)),
+                   rbp=[1e-6, 1e-7, 1e-8],
+                   establish_freq=[0.5, 0.8])
+
+cond_pattern = "cond_results/inversion_rbp{rbp}_estfreq{establish_freq}_rep{rep}.trees"
+
+cond_results = expand(cond_pattern, **cond_params)
+
+rule all:
+  input: cond_results
+
+rule inversion_cond:
+  input: "inversion_conditioned.slim"
+  output: 
+    cond_pattern
+  shell:
+    "/home/vsb/src/SLiM_build/slim -d rbp={wildcards.rbp} -d establish_freq={wildcards.establish_freq} -d rep={wildcards.rep} {input}"
+
