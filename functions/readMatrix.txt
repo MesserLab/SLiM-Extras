@@ -1,0 +1,27 @@
+//  (+)readMatrix(s$ path, [string$ sep = ","])
+//
+//  Read in a matrix of values from a file and return it
+
+//  Created by Ben Haller on 09/13/2022.
+//  A product of the Messer Lab, http://messerlab.org/slim/
+
+/*
+
+Ben Haller and Philipp Messer, the authors of this code, hereby place the code in this file into the public domain without restriction.  If you use this code, please credit SLiM-Extras and provide a link to the SLiM-Extras repository at https://github.com/MesserLab/SLiM-Extras.  Thank you.
+
+*/
+
+
+/*
+
+  This reads in the file at path with readCSV(), using a comma separator by default.  The file should not have a header row, and all rows should contain the same number of values of the same type (i.e., be a well-formed matrix of values).  The DataFrame returned by readCSV() is converted to a matrix with asMatrix() and returned.
+
+*/
+function (+)readMatrix(s$ path, [string$ sep = ","])
+{
+	if (!fileExists(path))
+		stop("readMatrix(): File not found at path " + path);
+	df = readCSV(path, colNames=F, sep=sep);
+	m = df.asMatrix();
+	return m;
+}
