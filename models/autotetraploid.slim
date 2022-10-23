@@ -1,5 +1,11 @@
 // Peter Ralph, 10 September 2019: autotetraploidy
 
+// Benjamin C. Haller, 23 October 2022: fixed a major bug that led to incorrect tag values, and thus
+// incorrect lookup of paired individuals, in the mutationEffect() callback.  The previous version of
+// this model should not be used, and all results based upon it should be re-run.  Caveat lector.
+// I have added more extensive debugging checks to the code to hopefully prevent this sort of error
+// in future.
+
 /*
 	Tetraploidy:
 	
@@ -44,6 +50,12 @@ initialize() {
 	defineConstant("totalLength", L * 1e-8); // total genetic length
 }
 
+2:1000 first() {
+	for (ind in p1.individuals)
+		if (ind.tagF != p2.individuals[ind.tag].tagF)
+			stop("first(): error for individual " + ind.index);
+}
+
 reproduction(p1) {
 	mate = p1.sampleIndividuals(1);
 	ma_chroms = c(individual.genomes, p2.individuals[individual.tag].genomes);
@@ -83,30 +95,46 @@ mutation(m1) {
 
 2: early() {
 	// initialize tags for new inds
+	// note that this minimal-update strategy only works for hermaphrodites;
+	// in sexual models, the indices of existing individuals may change when
+	// new offspring are created, so a complete remap might be needed
 	inds = p1.individuals[p1.individuals.age == 0];
 	others = p2.individuals[p2.individuals.age == 0];
 	idx = match(inds.tagF, others.tagF);
 	inds.tag = others.index[idx];
 }
 
+1:1000 early() {
+	for (ind in p1.individuals)
+		if (ind.tagF != p2.individuals[ind.tag].tagF)
+			stop("early(): error for individual " + ind.index);
+}
+
 2: early() {
+	inds = p1.individuals;
+	
 	// mark no-longer-alive p2 individuals for death
-	// don't have to do this every generation
 	alive = rep(0.0, p2.individualCount);
-	alive[p1.individuals.tag] = 1.0;
+	alive[inds.tag] = 1.0;
 	p2.individuals.fitnessScaling = alive;
-	// update tags to reflect this
+	
+	// update tags to reflect this; note the update must be deferred
+	// until after mortality, so that tags are correct in mutationEffect()
 	// note we are assuming that death won't rearrange their relative orders
 	tag_map = asInteger(cumSum(alive) - 1);
-	p1.individuals.tag = tag_map[p1.individuals.tag];
+	for (ind in inds)
+		ind.setValue("newTag", tag_map[ind.tag]);
 }
 
 early() {
 	p1.fitnessScaling = K / p1.individualCount;
 }
 
-fitness(m1, p1) {
+mutationEffect(m1, p1) {
 	other = p2.individuals[individual.tag];
+	if (individual.tagF != other.tagF)
+		stop("mutationEffect(): tagF values " + individual.tagF + " != " + other.tagF);
+	
 	h = mut.getValue("h");
 	// note: sum(individual.genomes.containsMutations(mut))
 	// is equivalent to but slower than (heterozygous ? 1 else 2)
@@ -115,18 +143,28 @@ fitness(m1, p1) {
 	return 1 + h[n] * mut.selectionCoeff;
 }
 
+2: late() {
+	// do the deferred tag update now that mortality has occurred
+	// note additional individuals might have died due to selection and
+	// density-dependent fitness; they will be cleaned up next tick
+	inds = p1.individuals;
+	newTags = inds.getValue("newTag");
+	inds.tag = newTags;
+}
+
 late() {
 	inds = p1.individuals;
-	catn(sim.generation + ": " + size(inds) + " (" + max(inds.age) + ")");
+	catn(sim.cycle + ": " + size(inds) + " (" + max(inds.age) + ")");
 	// for (ind in inds)
 	// 	catn(ind.index + ":" + ind.tag + " - " + ind.tagF + " : " + p2.individuals[ind.tag].tagF);
 }
 
+late() {
+	for (ind in p1.individuals)
+		if (ind.tagF != p2.individuals[ind.tag].tagF)
+			stop("late(): error for individual " + ind.index);
+}
+
 1000 late() {
-	for (ind in p1.individuals) {
-		if (ind.tagF != p2.individuals[ind.tag].tagF) {
-			catn("oh no! there was an error for individual " + ind.index);
-		}
-	}
 	catn("done!");
 }
