@@ -6,10 +6,15 @@
 // I have added more extensive debugging checks to the code to hopefully prevent this sort of error
 // in future.
 
+// Benjamin C. Haller, 26 November 2022: fixed a minor bug that could occasionally lead to a tag value
+// collision, because runif() can, very rarely, return duplicate values.  Replying on runif() to provide
+// unique values is thus slightly unsafe.  Switched to a global counter to provide unique values.
+
 /*
 	Tetraploidy:
 	
-	This is a simple model of an autotetraploid.  To do this, we have to 
+	This is a simple model of an autotetraploid.  To do this, we have to:
+	
 	(a) give each individual *four* genomes
 	(b) let crossing-over happen between any of the possible pairings
 	(c) compute fitness with all four genomes
@@ -37,8 +42,8 @@ initialize() {
 	initializeSLiMModelType("nonWF");
 	
 	defineConstant("K", 100);
-	defineConstant("L", 1e6); // total bp length
-	
+	defineConstant("L", 1e6);     // total bp length
+	defineGlobal("NEXT_TAG", 0);  // used to provide unique values
 	
 	initializeMutationType("m1", 0.5, "e", 0.01);
 	m1.convertToSubstitution = T;
@@ -70,7 +75,8 @@ reproduction(p1) {
 	breakpoints2 = sim.chromosome.drawBreakpoints();
 	other = p2.addRecombinant(ma_chroms[ma_order[2]], ma_chroms[ma_order[3]], breakpoints1,
 		pa_chroms[pa_order[2]], pa_chroms[pa_order[3]], breakpoints2);
-	tag = runif(1);
+	tag = NEXT_TAG;
+	defineGlobal("NEXT_TAG", NEXT_TAG + 1);
 	offspring.tagF = tag;
 	other.tagF = tag;
 }
@@ -86,7 +92,8 @@ mutation(m1) {
 	sim.addSubpop("p2", p1.individualCount);
 	for (k in seqLen(p1.individualCount)) {
 		// we can't point to the other individual so we have to associate them with unique tags
-		tag = runif(1);
+		tag = NEXT_TAG;
+		defineGlobal("NEXT_TAG", NEXT_TAG + 1);
 		p1.individuals[k].tagF = tag;
 		p2.individuals[k].tagF = tag;
 		p1.individuals[k].tag = k;
