@@ -1,177 +1,257 @@
-// Peter Ralph, 10 September 2019: autotetraploidy
+//William W. Booker, 10 January 2024: autotetraploidy
+//Based on script from Peter Ralph, 10 September 2019, but fixes major bugs leading to incorrect
+//fitness calculations and expands some parts
 
-// Benjamin C. Haller, 23 October 2022: fixed a major bug that led to incorrect tag values, and thus
-// incorrect lookup of paired individuals, in the mutationEffect() callback.  The previous version of
-// this model should not be used, and all results based upon it should be re-run.  Caveat lector.
-// I have added more extensive debugging checks to the code to hopefully prevent this sort of error
-// in future.
-
-// Benjamin C. Haller, 26 November 2022: fixed a minor bug that could occasionally lead to a tag value
-// collision, because runif() can, very rarely, return duplicate values.  Replying on runif() to provide
-// unique values is thus slightly unsafe.  Switched to a global counter to provide unique values.
-
-/*
+/*  
 	Tetraploidy:
 	
-	This is a simple model of an autotetraploid.  To do this, we have to:
+	This is a simple model of an autotetraploid with bivalent pairing and tetrasomic inheritance.  
+    To do this, we have to:
 	
 	(a) give each individual *four* genomes
 	(b) let crossing-over happen between any of the possible pairings
 	(c) compute fitness with all four genomes
 	
-	(a) Four genomes: the "real" individuals are in p1. Each individual has their other two genomes stashed
-	away in an individual in p2; the individuals in p2 don't do anything on their own. To identify them,
-	each individual in p1 has a "tag" that records the index of their pair in p2, so that
-	  p2.individuals[ind.tag].genomes
+	(a) Four genomes: the "real" individuals are in p2. Each individual has their other two genomes stashed
+	away in an individual in p1; the individuals in p1 don't do anything on their own. To identify them,
+	each individual in p2 has a "tag" that records the index of their pair in p1, so that
+	    p1.individuals[ind.tag].genomes
 	gets you the other two genomes for individual "ind" in p1. (To create these associations, we give each
 	individual a unique label, stored in their tagF property.) After an individual dies, we clean up their
 	paired individual by setting their fitness to 0.0 in the following generation. So, there's always more
-	individuals in p2 than in p1; the difference is individuals in p2 whose pair in p1 has just died.
+	individuals in p1 than in p2; the difference is individuals in p2 whose pair in p1 has just died.
 	
 	(b) For crossing-over, we pick random orderings of each of the mates' four genomes,
-    then do crossing-over between pairs.
+    then do crossing-over between pairs. Importantly, recombination here is still bivalent, but with tetrasomic
+    inheritance. Many autopolyploids form quadrivalents or can have some disomic inheritance. Quadrivalents
+    would require some complicated scripting, but bivalents can be modeled as described below.
+    
+    If you want more allopolyploid behavior, inheritance could be set to disomic by restricting
+    recombination to the chromosomes within p1 and p2 seperately. Importantly, the order still needs to be randomized
+    otherwise the initial recombinant strand is always the same one. 
 	
-	(c) Every new mutation has a property, "h", that is a vector of length 5, always starting with 0 and ending
-	with 1, that has randomly chosen dominance coefficients. Then, the contribution to fitness of having
-	k copies of a mutation is h[k] * s, where recall that: indexing is zero-based; fitness is multiplicative; and
-	since this is a nonWF model, "fitness" means probability of survival until the next generation.
+	(c) Every new mutation has a property, "h", the dominance coefficient, that is a vector of length 5, 
+    and "s" which is the selection coefficient. Below there are some example vectors for h under models, 
+    but these can be modified to fit any desired model. s can also be drawn from a distribution if desired and
+    set in the mutation callback. Fitness is calculated by taking the count of the number of mutations [0-4],
+    using that as the index of the h vector, and multiplying that by s. In this model fitness is multiplicative.
+
+    //text modified from initial script from Peter Ralph
 
 */
 
-initialize() {
+
+initialize()
+{
+
+	//set population parameters
+	defineConstant("K", 100); // carrying-capacity density
+	defineConstant("mu", 1e-8); // deleterious mutation_rate
+	defineConstant("s", -0.005); // deleterious selection coefficient
+	defineConstant("g_size", 999999); // genome size this value + 1
+	defineConstant("rho", 1e-8); // recombination_rate
+
+
+	//set as nonWF model
 	initializeSLiMModelType("nonWF");
+
+	//set mutation rate
+	initializeMutationRate(mu);
 	
-	defineConstant("K", 100);
-	defineConstant("L", 1e6);     // total bp length
-	defineGlobal("NEXT_TAG", 0);  // used to provide unique values
+	//set s here to 0 because we need to calculate it manually. dominance coefficient not important either
+	initializeMutationType("m1", 0.5, "f", 0.0);
+
+	//ensure mutations don't convert for tracking
+	m1.convertToSubstitution = F;	
 	
-	initializeMutationType("m1", 0.5, "e", 0.01);
-	m1.convertToSubstitution = T;
+
+	initializeGenomicElementType("g1", m1, 1);
 	
-	initializeGenomicElementType("g1", m1, 1.0);
-	initializeGenomicElement(g1, 0, L - 1);
-	initializeMutationRate(1e-7);
-	initializeRecombinationRate(1e-8);
-	defineConstant("totalLength", L * 1e-8); // total genetic length
+	//initialize genome and recombination rate
+	initializeGenomicElement(g1, 0, g_size);
+	initializeRecombinationRate(rho);
+	
+	//define h for polyploids, commented ones include possible examples
+	
+    //additive
+    defineGlobal("h_m1", c(0.0, 0.25, 0.5, 0.75, 1.0));
+    
+    //recessive
+    //defineGlobal("h_m1", c(0.0, 0.0, 0.0, 0.0, 1.0));
+
+    //duplex (as long as there are 2 copies of wt no fitness effect)
+    //defineGlobal("h_m1", c(0.0, 0.0, 0.0, 1.0, 1.0));
+    
+    //initialize continuous tag for tracking chromosomes to individuals
+    defineGlobal("c_tag", 0);
+
+
 }
 
-2:1000 first() {
-	for (ind in p1.individuals)
-		if (ind.tagF != p2.individuals[ind.tag].tagF)
-			stop("first(): error for individual " + ind.index);
-}
 
-reproduction(p1) {
-	mate = p1.sampleIndividuals(1);
-	ma_chroms = c(individual.genomes, p2.individuals[individual.tag].genomes);
-	pa_chroms = c(mate.genomes, p2.individuals[mate.tag].genomes);
-	ma_order = sample(seqLen(4), 4);
-	pa_order = sample(seqLen(4), 4);
-	breakpoints1 = sim.chromosome.drawBreakpoints();
-	breakpoints2 = sim.chromosome.drawBreakpoints();
-	offspring = p1.addRecombinant(ma_chroms[ma_order[0]], ma_chroms[ma_order[1]], breakpoints1,
-		pa_chroms[pa_order[0]], pa_chroms[pa_order[1]], breakpoints2);
-	breakpoints1 = sim.chromosome.drawBreakpoints();
-	breakpoints2 = sim.chromosome.drawBreakpoints();
-	other = p2.addRecombinant(ma_chroms[ma_order[2]], ma_chroms[ma_order[3]], breakpoints1,
-		pa_chroms[pa_order[2]], pa_chroms[pa_order[3]], breakpoints2);
-	tag = NEXT_TAG;
-	defineGlobal("NEXT_TAG", NEXT_TAG + 1);
-	offspring.tagF = tag;
-	other.tagF = tag;
-}
-
-mutation(m1) {
-	// the fitness effect of having k alleles will be h[k] * s
-	mut.setValue("h", c(0.0, sort(runif(3)), 1.0));
+//need to set s and h for the mutations as they appear, since we don't set them initially
+mutation(m1)
+{
+    mut.setValue("s", s);
+    mut.setValue("h",h_m1);
 	return T;
 }
 
-1 early() {
-	sim.addSubpop("p1", K);
-	sim.addSubpop("p2", p1.individualCount);
-	for (k in seqLen(p1.individualCount)) {
-		// we can't point to the other individual so we have to associate them with unique tags
-		tag = NEXT_TAG;
-		defineGlobal("NEXT_TAG", NEXT_TAG + 1);
-		p1.individuals[k].tagF = tag;
-		p2.individuals[k].tagF = tag;
-		p1.individuals[k].tag = k;
+//calculate fitness using fitnessEffect because mutationEffect does not detect mutations only present in the storage pop, but also this leads to a performance boost
+fitnessEffect()
+{
+    //using p1 to hold extra chromosomes, so we don't want to calculate fitness for those individuals
+	if(individual.subpopulation == p1)
+		return 1.0;
+	
+	genomes = c(individual.genomes,sim.subpopulations[0].individuals[individual.tag].genomes);
+	mutations = unique(genomes.mutationsOfType(m1));
+	if(size(mutations)==0)
+		return 1.0;
+	mut_counts = genomes.mutationCountsInGenomes(mutations);
+
+    //calculate fitness for all mutations then get the product for that vector to get multiplicative fitness
+	fit_vector = sapply(seqAlong(mutations), "mut = mutations[applyValue]; count = mut_counts[applyValue]; 1 + mut.getValue('h')[count] * mut.getValue('s');");
+	return product(fit_vector);
+}
+
+
+1 early()
+{
+
+	//first deme holds extra chromosomes of every individual
+	sim.addSubpop(1, K);
+
+	//initialize 2nd population where fitness is calculated
+	sim.addSubpop(2, K);
+
+
+	//create individual tags to keep track of chromosomes
+	for(j in seqLen(sim.subpopulations[1].individualCount))
+    {
+		defineGlobal("c_tag", (c_tag+1));
+		sim.subpopulations[1].individuals[j].tagF = c_tag;
+		sim.subpopulations[0].individuals[j].tagF = c_tag;
 	}
 }
 
-2: early() {
-	// initialize tags for new inds
-	// note that this minimal-update strategy only works for hermaphrodites;
-	// in sexual models, the indices of existing individuals may change when
-	// new offspring are created, so a complete remap might be needed
-	inds = p1.individuals[p1.individuals.age == 0];
-	others = p2.individuals[p2.individuals.age == 0];
-	idx = match(inds.tagF, others.tagF);
-	inds.tag = others.index[idx];
+
+// since p1 has fitness of 1 for calc purposes, we need to kill them if age is greater than 1
+survival(p1) 
+{
+ if (individual.age == 0)
+ 	return T;
+ return NULL;
 }
 
-1:1000 early() {
-	for (ind in p1.individuals)
-		if (ind.tagF != p2.individuals[ind.tag].tagF)
-			stop("early(): error for individual " + ind.index);
+
+
+// set tag as the index of the individual in the storage population to speed up reproduction and fitness calculations
+early(){
+
+	inds = sim.subpopulations[1:(size(sim.subpopulations)-1)].individuals;
+	tag = match(inds.tagF, sim.subpopulations[0].individuals.tagF);
+	inds.tag = tag;
 }
 
-2: early() {
-	inds = p1.individuals;
-	
-	// mark no-longer-alive p2 individuals for death
-	alive = rep(0.0, p2.individualCount);
-	alive[inds.tag] = 1.0;
-	p2.individuals.fitnessScaling = alive;
-	
-	// update tags to reflect this; note the update must be deferred
-	// until after mortality, so that tags are correct in mutationEffect()
-	// note we are assuming that death won't rearrange their relative orders
-	tag_map = asInteger(cumSum(alive) - 1);
-	for (ind in inds)
-		ind.setValue("newTag", tag_map[ind.tag]);
-}
+2: first() {
 
-early() {
-	p1.fitnessScaling = K / p1.individualCount;
-}
-
-mutationEffect(m1, p1) {
-	other = p2.individuals[individual.tag];
-	if (individual.tagF != other.tagF)
-		stop("mutationEffect(): tagF values " + individual.tagF + " != " + other.tagF);
-	
-	h = mut.getValue("h");
-	// note: sum(individual.genomes.containsMutations(mut))
-	// is equivalent to but slower than (heterozygous ? 1 else 2)
-	// ... but we can't do this for "other" so leaving it this way
-	n = sum(individual.genomes.containsMutations(mut)) + sum(other.genomes.containsMutations(mut));
-	return 1 + h[n] * mut.selectionCoeff;
+	inds = sim.subpopulations[1:(size(sim.subpopulations)-1)].individuals;
+	tag = match(inds.tagF, sim.subpopulations[0].individuals.tagF);
+	inds.tag = tag;
 }
 
 2: late() {
-	// do the deferred tag update now that mortality has occurred
-	// note additional individuals might have died due to selection and
-	// density-dependent fitness; they will be cleaned up next tick
-	inds = p1.individuals;
-	newTags = inds.getValue("newTag");
-	inds.tag = newTags;
+
+	inds = sim.subpopulations[1:(size(sim.subpopulations)-1)].individuals;
+	tag = match(inds.tagF, sim.subpopulations[0].individuals.tagF);
+	inds.tag = tag;
 }
 
-late() {
-	inds = p1.individuals;
-	catn(sim.cycle + ": " + size(inds) + " (" + max(inds.age) + ")");
-	// for (ind in inds)
-	// 	catn(ind.index + ":" + ind.tag + " - " + ind.tagF + " : " + p2.individuals[ind.tag].tagF);
+
+// parents die; offspring survive proportional to fitness (Generations discrete and non-overlapping)
+early()
+{
+	for (i in 1:size(sim.subpopulations))
+	{
+		inds = sim.subpopulations[i - 1].individuals;
+		inds[inds.age > 0].fitnessScaling = 0.0;
+	}
 }
 
-late() {
-	for (ind in p1.individuals)
-		if (ind.tagF != p2.individuals[ind.tag].tagF)
-			stop("late(): error for individual " + ind.index);
+
+//set reproduction
+reproduction()
+{
+    // sample parents for reproduction, this model pop-size is constant at K
+    inds = sim.subpopulations[1].individuals;
+    parents1 = sample(inds, K, replace=T);
+    parents2 = sample(inds, K, replace=T);
+
+    //reproduction for each offspring
+    for (j in seqLen(K))
+    {
+        p1_chroms = c(parents1[j].genomes, sim.subpopulations[0].individuals[parents1[j].tag].genomes);
+        p2_chroms = c(parents2[j].genomes, sim.subpopulations[0].individuals[parents2[j].tag].genomes);
+
+        //randomize recombination order for autopolyploids
+        p1_order = sample(seqLen(4), 4);
+        p2_order = sample(seqLen(4), 4);
+
+        //draw breakpoints and recombine for first pair
+        breakpoints1 = sim.chromosome.drawBreakpoints();
+        breakpoints2 = sim.chromosome.drawBreakpoints();
+        offspring = sim.subpopulations[1].addRecombinant(p1_chroms[p1_order[0]], p1_chroms[p1_order[1]], breakpoints1, p2_chroms[p2_order[0]], p2_chroms[p2_order[1]], breakpoints2);
+        
+        //draw breakpoints and recombine for second pair
+        breakpoints1 = sim.chromosome.drawBreakpoints();
+        breakpoints2 = sim.chromosome.drawBreakpoints();
+        other = sim.subpopulations[0].addRecombinant(p1_chroms[p1_order[2]], p1_chroms[p1_order[3]], breakpoints1, p2_chroms[p2_order[2]], p2_chroms[p2_order[3]], breakpoints2);
+        
+        //increase tag number and set
+        defineGlobal("c_tag", (c_tag+1));
+        offspring.tagF = c_tag; 
+        other.tagF = c_tag;
+    }
+
+    //this is to change reproduction to only once per generation
+	self.active = 0; 
 }
 
-1000 late() {
-	catn("done!");
+
+//to save time we do this every 100 gens, and check to make sure the tags are accurate using a lookup rather than the sort, do it first/early/late for making sure they're set for every step/calc
+//do a quick check to make sure tags are right every 100 gens
+101: first (){
+	check_ticks = seq(from=101,to=200001,by=100);
+	if(match(community.tick, check_ticks) >= 0){
+		for (ind in sim.subpopulations[seq(from = 1, to = (size(sim.subpopulations)-1), by = 1)].individuals)
+			if (ind.tagF != sim.subpopulations[0].individuals[ind.tag].tagF)
+				stop("late(): error for individual " + ind.index);
+	}
+}
+
+//do a quick check to make sure tags are right every 100 gens
+101: early (){
+	check_ticks = seq(from=101,to=200001,by=100);
+	if(match(community.tick, check_ticks) >= 0){
+		for (ind in sim.subpopulations[seq(from = 1, to = (size(sim.subpopulations)-1), by = 1)].individuals)
+			if (ind.tagF != sim.subpopulations[0].individuals[ind.tag].tagF)
+				stop("late(): error for individual " + ind.index);
+	}
+}
+
+//do a quick check to make sure tags are right every 100 gens
+101: late (){
+	check_ticks = seq(from=101,to=200001,by=100);
+	if(match(community.tick, check_ticks) >= 0){
+		for (ind in sim.subpopulations[seq(from = 1, to = (size(sim.subpopulations)-1), by = 1)].individuals)
+			if (ind.tagF != sim.subpopulations[0].individuals[ind.tag].tagF)
+				stop("late(): error for individual " + ind.index);
+	}
+}
+
+2:10000 late()
+{	
+print(mean(sim.subpopulations[1].cachedFitness(NULL)));
+
 }
