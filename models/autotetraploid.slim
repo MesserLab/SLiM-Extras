@@ -1,12 +1,10 @@
 //William W. Booker, 10 January 2024: autotetraploidy
-//Based on script from Peter Ralph, 10 September 2019, but fixes major bugs leading to incorrect
-//fitness calculations and expands some parts
-
+//Based on a concept by Yaniv Brandvain and Peter Ralph
 /*  
 	Tetraploidy:
 	
 	This is a simple model of an autotetraploid with bivalent pairing and tetrasomic inheritance.  
-    To do this, we have to:
+   	To do this, we have to:
 	
 	(a) give each individual *four* genomes
 	(b) let crossing-over happen between any of the possible pairings
@@ -17,26 +15,25 @@
 	each individual in p2 has a "tag" that records the index of their pair in p1, so that
 	    p1.individuals[ind.tag].genomes
 	gets you the other two genomes for individual "ind" in p1. (To create these associations, we give each
-	individual a unique label, stored in their tagF property.) After an individual dies, we clean up their
-	paired individual by setting their fitness to 0.0 in the following generation. So, there's always more
-	individuals in p1 than in p2; the difference is individuals in p2 whose pair in p1 has just died.
+	individual a unique label, stored in their tagF property, and then index them each generation to set the tag) 
+	After an individual dies, we clean up their paired individual by setting their fitness to 0.0 in the 
+	following generation. So, there's always more individuals in p1 than in p2; the difference is individuals 
+	in p1 whose pair in p2 has just died.
 	
 	(b) For crossing-over, we pick random orderings of each of the mates' four genomes,
-    then do crossing-over between pairs. Importantly, recombination here is still bivalent, but with tetrasomic
-    inheritance. Many autopolyploids form quadrivalents or can have some disomic inheritance. Quadrivalents
-    would require some complicated scripting, but bivalents can be modeled as described below.
+    	then do crossing-over between pairs. Importantly, recombination here is still bivalent, but with tetrasomic
+    	inheritance. Many autopolyploids form quadrivalents or can have some disomic inheritance. Quadrivalents
+    	would require some complicated scripting, but bivalents can be modeled as described below.
     
-    If you want more allopolyploid behavior, inheritance could be set to disomic by restricting
-    recombination to the chromosomes within p1 and p2 seperately. Importantly, the order still needs to be randomized
-    otherwise the initial recombinant strand is always the same one. 
+    	If you want more allopolyploid behavior, inheritance could be set to disomic by restricting
+    	recombination to the chromosomes within p1 and p2 seperately. Importantly, the order still needs to be randomized
+    	otherwise the initial recombinant strand is always the same one. 
 	
 	(c) Every new mutation has a property, "h", the dominance coefficient, that is a vector of length 5, 
-    and "s" which is the selection coefficient. Below there are some example vectors for h under models, 
-    but these can be modified to fit any desired model. s can also be drawn from a distribution if desired and
-    set in the mutation callback. Fitness is calculated by taking the count of the number of mutations [0-4],
-    using that as the index of the h vector, and multiplying that by s. In this model fitness is multiplicative.
-
-    //text modified from initial script from Peter Ralph
+    	and "s" which is the selection coefficient. Below there are some example vectors for h under models, 
+    	but these can be modified to fit any desired model. s can also be drawn from a distribution if desired and
+    	set in the mutation callback. Fitness is calculated by taking the count of the number of mutations [0-4],
+    	using that as the index of the h vector, and multiplying that by s. In this model fitness is multiplicative.
 
 */
 
@@ -45,7 +42,7 @@ initialize()
 {
 
 	//set population parameters
-	defineConstant("K", 100); // carrying-capacity density
+	defineConstant("K", 100); // population size / carrying capacity
 	defineConstant("mu", 1e-8); // deleterious mutation_rate
 	defineConstant("s", -0.005); // deleterious selection coefficient
 	defineConstant("g_size", 999999); // genome size this value + 1
@@ -73,17 +70,17 @@ initialize()
 	
 	//define h for polyploids, commented ones include possible examples
 	
-    //additive
-    defineGlobal("h_m1", c(0.0, 0.25, 0.5, 0.75, 1.0));
+    	//additive
+    	defineGlobal("h_m1", c(0.0, 0.25, 0.5, 0.75, 1.0));
     
-    //recessive
-    //defineGlobal("h_m1", c(0.0, 0.0, 0.0, 0.0, 1.0));
+    	//recessive
+    	//defineGlobal("h_m1", c(0.0, 0.0, 0.0, 0.0, 1.0));
 
-    //duplex (as long as there are 2 copies of wt no fitness effect)
-    //defineGlobal("h_m1", c(0.0, 0.0, 0.0, 1.0, 1.0));
+    	//duplex (as long as there are 2 copies of wt no fitness effect)
+    	//defineGlobal("h_m1", c(0.0, 0.0, 0.0, 1.0, 1.0));
     
-    //initialize continuous tag for tracking chromosomes to individuals
-    defineGlobal("c_tag", 0);
+    	//initialize continuous tag for tracking chromosomes to individuals
+    	defineGlobal("c_tag", 0);
 
 
 }
@@ -97,7 +94,7 @@ mutation(m1)
 	return T;
 }
 
-//calculate fitness using fitnessEffect because mutationEffect does not detect mutations only present in the storage pop, but also this leads to a performance boost
+//calculate fitness using fitnessEffect because mutationEffect does not detect mutations only present in the storage pop
 fitnessEffect()
 {
     //using p1 to hold extra chromosomes, so we don't want to calculate fitness for those individuals
@@ -110,7 +107,7 @@ fitnessEffect()
 		return 1.0;
 	mut_counts = genomes.mutationCountsInGenomes(mutations);
 
-    //calculate fitness for all mutations then get the product for that vector to get multiplicative fitness
+    //calculate fitness for all mutations then take the product of that vector to get multiplicative fitness
 	fit_vector = sapply(seqAlong(mutations), "mut = mutations[applyValue]; count = mut_counts[applyValue]; 1 + mut.getValue('h')[count] * mut.getValue('s');");
 	return product(fit_vector);
 }
@@ -128,7 +125,7 @@ fitnessEffect()
 
 	//create individual tags to keep track of chromosomes
 	for(j in seqLen(sim.subpopulations[1].individualCount))
-    {
+    	{
 		defineGlobal("c_tag", (c_tag+1));
 		sim.subpopulations[1].individuals[j].tagF = c_tag;
 		sim.subpopulations[0].individuals[j].tagF = c_tag;
@@ -180,7 +177,7 @@ early()
 }
 
 
-//set reproduction
+//manual reproduction to properly recombine and tag chromosomes
 reproduction()
 {
     // sample parents for reproduction, this model pop-size is constant at K
@@ -214,7 +211,7 @@ reproduction()
         other.tagF = c_tag;
     }
 
-    //this is to change reproduction to only once per generation
+    	//this is to change reproduction to only once per generation
 	self.active = 0; 
 }
 
@@ -253,5 +250,4 @@ reproduction()
 2:10000 late()
 {	
 print(mean(sim.subpopulations[1].cachedFitness(NULL)));
-
 }
