@@ -2,7 +2,9 @@
 #
 # Functions to generate landscapes with slope, curvature, and autocorrelated noise.
 # Because of the slope and curvature terms, these landscapes are generated to be
-# periodic in the y direction but not in the x direction.
+# periodic in the y direction but not in the x direction by default. Setting 
+# periodic_x=T in generateLandscape will make both dimensions periodic, so long
+# as slope and curvature both equal 0.0.
 #
 # By Rupert Mazzucco, with minor modifications by Ben Haller, July 2010
 #
@@ -66,7 +68,7 @@ flt_bessel_2D_even <- function(dx,acl=1)
 # flt   ... function generating impulse response vector taking args (x,acl)
 #                               where x is a vector of locations
 
-cn_2D <- function(acl, pts_per_acl=3, amp=1, wn=wn_gauss, flt=flt_bessel_2D_even, minSize=64)
+cn_2D <- function(acl, pts_per_acl=3, amp=1, wn=wn_gauss, flt=flt_bessel_2D_even, minSize=64, periodic_x=F)
 {
 	# calculate the size needed for the landscape; note that acl==0 does not work
 	n <- 2^round(log2(pts_per_acl/acl))	# force power of 2
@@ -85,11 +87,14 @@ cn_2D <- function(acl, pts_per_acl=3, amp=1, wn=wn_gauss, flt=flt_bessel_2D_even
 		# truncate filter
 		f <- f[(1:n)+(m-n)/2,]
 	}
-	# no periodicity in x direction; since the fft forces periodicity, we pad
-	# the grid with a sufficient number of points
+
 	nx <- n
-	while (nx-n < m)
-		nx <- 2*nx
+	if (periodic_x == F) {
+	  # no periodicity in x direction; since the fft forces periodicity, we pad
+	  # the grid with a sufficient number of points
+	  while (nx-n < m)
+	    nx <- 2*nx
+	}
 	
 	# pad filter with zeros so that dim==(n,nx)
 	if (m<n)
@@ -105,10 +110,14 @@ cn_2D <- function(acl, pts_per_acl=3, amp=1, wn=wn_gauss, flt=flt_bessel_2D_even
 	return(h[,(1:n)+(nx-n)/2])
 }
 
-generateLandscape <- function(slope, curvature, amplitude, aclength, minSize=64)
+generateLandscape <- function(slope, curvature, amplitude, aclength, minSize=64, periodic_x=F)
 {
+  # Fail safe in case there are conflicting parameters
+  if (periodic_x == T && (slope != 0.0 | curvature != 0.0))
+    stop("Error: Cannot have slope/curvature with periodicity along x dimension.")
+  
 	if ((amplitude > 0.0) && (aclength > 0.0))
-		noise <- cn_2D(acl=aclength, pts_per_acl=5, amp=amplitude, minSize=minSize)
+		noise <- cn_2D(acl=aclength, pts_per_acl=5, amp=amplitude, minSize=minSize, periodic_x=as.logical(periodic_x))
 	else
 		noise <- matrix(0, ncol=minSize, nrow=minSize)
 	
