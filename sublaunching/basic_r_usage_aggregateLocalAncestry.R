@@ -14,13 +14,79 @@
 #	Thank you.
 
 
+# This script is designed to work with an old version of the recipe
+# for section 14.7 in the SLiM manual.  Since that recipe has been
+# changed, here is the original code for it; cut/paste this code
+# into a file named "recipe.txt" to be run by the R script below.
+
+# --------------------------------------------------------------------
+
+initialize() {
+	defineConstant("L", 1e4);                      // chromosome length
+	
+	initializeMutationRate(0);
+	initializeMutationType("m1", 0.5, "f", 0.1);   // beneficial
+	initializeMutationType("m2", 0.5, "f", 0.0);   // p1 marker
+	m2.convertToSubstitution = F;
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, L-1);
+	initializeRecombinationRate(1e-7);
+}
+1 early() {
+	sim.addSubpop("p1", 500);
+	sim.addSubpop("p2", 500);
+}
+1 late() {
+	// p1 and p2 are each fixed for one beneficial mutation
+	p1.genomes.addNewDrawnMutation(m1, asInteger(L * 0.2));
+	p2.genomes.addNewDrawnMutation(m1, asInteger(L * 0.8));
+	
+	// p1 has marker mutations at every position, to track ancestry
+	p1.genomes.addNewMutation(m2, 0.0, 0:(L-1));
+	
+	// make p3 be an admixture of p1 and p2 in the next cycle
+	sim.addSubpop("p3", 1000);
+	p3.setMigrationRates(c(p1, p2), c(0.5, 0.5));
+}
+2 late() {
+	// get rid of p1 and p2
+	p3.setMigrationRates(c(p1, p2), c(0.0, 0.0));
+	p1.setSubpopulationSize(0);
+	p2.setSubpopulationSize(0);
+}
+2: late() {
+	if (sim.mutationsOfType(m1).size() == 0)
+	{
+		p3g = p3.genomes;
+		
+		p1Total = sum(p3g.countOfMutationsOfType(m2));
+		maxTotal = p3g.size() * L;
+		p1TotalFraction = p1Total / maxTotal;
+		catn("Fraction with p1 ancestry: " + p1TotalFraction);
+		
+		p1Counts = integer(L);
+		for (g in p3g)
+			p1Counts = p1Counts + integer(L, 0, 1, g.positionsOfMutationsOfType(m2));
+		maxCount = p3g.size();
+		p1Fractions = p1Counts / maxCount;
+		catn("Fraction with p1 ancestry, by position:");
+		catn(format("%.3f", p1Fractions));
+		
+		sim.simulationFinished();
+	}
+}
+100000 late() {
+	stop("Did not reach fixation of beneficial alleles.");
+}
+
+# --------------------------------------------------------------------
+#
+# The remainder of this file is the R script to sublaunch the above
+# SLiM model and process the results.
+#
+
 # First of all, define the paths to slim and to the script; these
 # are system-specific and will need to be tailored to your machine.
-# This script is designed to work with the recipe for section 14.7 in
-# the SLiM manual; the recipe is available for download online at
-# https://messerlab.org/slim/.  For simplicity we'll assume the recipe
-# has been renamed "recipe.txt" but the full name of the file can be
-# used instead if you wish.
 slim_path <- "/usr/local/bin/slim"
 script_path <- "/Users/bhaller/Desktop/recipe.txt"
 
