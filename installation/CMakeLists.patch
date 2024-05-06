@@ -1,18 +1,20 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d278da11..ef94efb2 100644
+index d278da11..1bd308d8 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -57,7 +57,8 @@ cmake_minimum_required (VERSION 2.8.12 FATAL_ERROR)
+@@ -57,7 +57,10 @@ cmake_minimum_required (VERSION 2.8.12 FATAL_ERROR)
  option(TIDY "Run clang-tidy on SLiM (for development)" OFF)
  
  if(TIDY)
 -	cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
 +	# cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
-+  if(CMAKE_VERSION VERSION_LESS "3.6") message(FATAL_ERROR "To use the clang-tidy wrapper TIDY in this project you will need a version of CMake at least as new as 3.6.") endif()
++  if(CMAKE_VERSION VERSION_LESS "3.6")
++    message(FATAL_ERROR "To use the clang-tidy wrapper TIDY in this project you will need a version of CMake at least as new as 3.6.")
++  endif()
  	message(STATUS "TIDY is ${TIDY}; building with clang-tidy (for development)")
  	set(CMAKE_C_COMPILER "/opt/local/libexec/llvm-17/bin/clang")
  	set(CMAKE_CXX_COMPILER "/opt/local/libexec/llvm-17/bin/clang++")
-@@ -318,41 +319,51 @@ endif(PARALLEL)
+@@ -318,41 +321,51 @@ endif(PARALLEL)
  
  # SLiMgui -- this can be enabled with the -DBUILD_SLIMGUI=ON option to cmake
  if(BUILD_SLIMGUI)
