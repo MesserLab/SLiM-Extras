@@ -254,14 +254,9 @@ if [[ $recentcmake -ne 0 ]]; then
     # Exit if installation unsuccessful.
     echo "Installation to /usr/bin was successful. Proceeding with desktop \
 integration." | fold -sw 80;
-    { mv ../SLiM/QtSLiM/icons/AppIcon64.svg \
-         /usr/share/icons/hicolor/scalable/apps/org.messerlab.slimgui;
-      mv ../SLiM/QtSLiM/icons/DocIcon.svg \
-         /usr/share/icons/hicolor/scalable/mimetypes/text-slim.svg;
-      mv ../SLiM/org.messerlab.slimgui-mime.xml /usr/share/mime/packages/;
-      mv ../SLiM/org.messerlab.slimgui.desktop /usr/share/applications/;
-      mv ../SLiM/org.messerlab.slimgui.appdata.xml /usr/share/metainfo/;
-
+    { {rsync -a ../SLiM/data/ /usr/local/share && echo "rsync failed!"} || {
+          exit 14;
+      }
       update-mime-database -n /usr/share/mime/;
       xdg-mime install --mode system \
                /usr/share/mime/packages/org.messerlab.slimgui-mime.xml;
