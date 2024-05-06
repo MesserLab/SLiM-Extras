@@ -77,14 +77,21 @@ inspect this script, and your system, as other issues may exist." | fold -sw 80;
 }
 
 if [[ $curlinstalled == 0 ]]; then
-    { curl http://benhaller.com/slim/SLiM.zip > SLiM.zip && unzip SLiM.zip; } ||\
-        {
-            echo "Failed to download SLiM.zip or unzip it.";
-            exit 4;
-        }
+    { curl https://github.com/MesserLab/SLiM/archive/refs/tags/v4.2.2.tar.gz > \
+           SLiM-4.2.2.tar.gz && tar -x -f SLiM-4.2.2.tar.gz && \
+          mv SLiM-4.2.2 SLiM;
+    } || {
+        printf "Failed to download %s%s as SLiM-4.2.2.tar.gz or decompress and \
+unarchive it." 'https://github.com/MesserLab/SLiM/archive/refs/tags/' \
+               'v4.2.2.tar.gz';
+        exit 4;
+    }
 elif [[ $wgetinstalled == 0 ]]; then
-	  { wget http://benhaller.com/slim/SLiM.zip && unzip SLiM.zip; } || {
-        echo "Failed to download SLiM.zip or unzip it.";
+	  { wget https://github.com/MesserLab/SLiM/archive/refs/tags/v4.2.2.tar.gz && \
+          tar -x -f v4.2.2.tar.gz && mv SLiM-4.2.2 SLiM; } || {
+        printf "Failed to download %s%s or decompress and unarchive it." \
+               'https://github.com/MesserLab/SLiM/archive/refs/tags/' \
+               'v4.2.2.tar.gz';
         exit 5;
     }
 else { exit 6; } # Exit if neither curl nor wget is installed.
