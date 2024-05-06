@@ -103,9 +103,9 @@ error." | fold -sw 80;
 { cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)"; } || {
     logfile="/var/log/SLiM-CMakeOutput-$(date -Is).log";
     echo "Attempting to move logfile to permanent location."
-    if [[ -d /var/log && -d CMakeFiles ]] {
-           mv CMakeFiles/CMakeOutput.log $logfile;
-       } || exit 8;
+    if [[ -d /var/log && -d CMakeFiles ]]; then
+        mv CMakeFiles/CMakeOutput.log $logfile || exit 8;
+    fi;
     printf "Build failed. Please see the output and make a post on the \
 slim-discuss mailing list. The output from this build is stored in '/var/log/' \
 as %s. You may be asked to upload this file during a support request." $logfile \
