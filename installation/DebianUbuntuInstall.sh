@@ -59,54 +59,58 @@ requirements are satisfied." | fold -sw 80;
 }
 
 [[ $curlinstalled == 0 || $wgetinstalled == 0 ]] || {
-    printf "Neither curl nor wget are installed. Install either with one \
+    echo "Neither curl nor wget are installed. Install either with one \
 of: 'sudo apt install wget', OR 'sudo apt install curl'." | fold -sw 80;
 }
 
 #Exit if qtchooser, qtbase5-dev, qt5-qmake, or cmake are not installed. If
 #neither curl nor wget are installed, we exit later.
 [[ $qtchooserinstalled == 0 && $qtbase5devinstalled == 0 && \
-       $qmakeinstalled == 0 && $cmakeinstalled == 0 ]] || exit;
+       $qmakeinstalled == 0 && $cmakeinstalled == 0 ]] || exit 2;
 
 pushd `mktemp -d` || {
-    printf "The Filesystem Hierarchy-standard directory /tmp does not exist, \
+    echo "The Filesystem Hierarchy-standard directory /tmp does not exist, \
 \$TMPDIR is not set, or some strange permissions issue exists with root and \
 one of these locations. Resolve the issue by creating that directory; \
 inspect this script, and your system, as other issues may exist." | fold -sw 80;
-    exit;
+    exit 3;
 }
 
 if [[ $curlinstalled == 0 ]]; then
     { curl http://benhaller.com/slim/SLiM.zip > SLiM.zip && unzip SLiM.zip; } ||\
         {
-            printf "Failed to download SLiM.zip or unzip it.\n";
-            exit;
+            echo "Failed to download SLiM.zip or unzip it.";
+            exit 4;
         }
 elif [[ $wgetinstalled == 0 ]]; then
 	  { wget http://benhaller.com/slim/SLiM.zip && unzip SLiM.zip; } || {
-        printf "Failed to download SLiM.zip or unzip it.\n";
-        exit;
+        echo "Failed to download SLiM.zip or unzip it.";
+        exit 5;
     }
-else { exit; } # Exit if neither curl nor wget is installed.
+else { exit 6; } # Exit if neither curl nor wget is installed.
 fi
 
 # Proceed with building and installing if all tests succeeded.
-{ mkdir BUILD && cd BUILD ;} || {
-    echo "Root is unable to create /tmp/BUILD. It likely already exists. Try \
-again after deleting it." | fold -sw 80;
-    exit;
+{  mkdir BUILD && pushd BUILD; } || {
+    echo "Root is unable to create `pwd`/BUILD. This must be a permissions \
+error." | fold -sw 80;
+    exit 7;
 }
+
 # The build process cmake will follow when building SLiMgui will install desktop
 # integration files when the version of CMake is new enough, otherwise it will
 # not.
-{ cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)" ;} || {
+{ cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)"; } || {
+    logfile="/var/log/SLiM-CMakeOutput-$(date -Is).log";
+    echo "Attempting to move logfile to permanent location."
+    if [[ -d /var/log && -d CMakeFiles ]] {
+           mv CMakeFiles/CMakeOutput.log $logfile;
+       } || exit 8;
     printf "Build failed. Please see the output and make a post on the \
-slim-discuss mailing list. The output from this build is stored in \
-'/var/log/' as SLiM-CMakeOutput-%s.log. You may be asked to upload this file \
-during a support request." "$(date -Is)" | fold -sw 80
-    mv /tmp/BUILD/CMakeFiles/CMakeOutput.log \
-       /var/log/SLiM-CMakeOutput-"$(date -Is)".log;
-    exit;
+slim-discuss mailing list. The output from this build is stored in '/var/log/' \
+as %s. You may be asked to upload this file during a support request." $logfile \
+        | fold -sw 80;
+    exit 9;
 }
 
 { mkdir -p /usr/bin /usr/share/icons/hicolor/scalable/apps/ \
@@ -115,13 +119,13 @@ during a support request." "$(date -Is)" | fold -sw 80
     echo "Some directory necessary for installation was not successfully \
 created. Please see the output and make a post on the slim-discuss mailing \
 list." | fold -sw 80;
-    exit;
+    exit 10;
 }
 
 install slim eidos SLiMgui /usr/bin || {
     echo "Installation to /usr/bin was unsuccessful. Please see the output and \
 make a post on the slim-discuss mailing list." | fold -sw 80;
-    exit;
+    exit 11;
 }
 
 
@@ -131,8 +135,8 @@ if(CMAKE_VERSION VERSION_LESS "3.14")
   message(FATAL_ERROR "CMAKE_VERSION is less than 3.14")
 endif()
 EOF
-cmake -P ${testversion}
-recentcmake=$?
+cmake -P ${testversion};
+recentcmake=$?;
 if [[ $recentcmake -ne 0 ]]; then
     # Exit if installation unsuccessful.
     echo "Installation to /usr/bin was successful. Proceeding with desktop \
@@ -151,17 +155,17 @@ integration." | fold -sw 80;
     } || {
         echo "Desktop integration failed. Please see the output and make a post
         on the slim-discuss mailing list." | fold -sw 80;
-        exit;
+        exit 12;
     }
 
-    echo "Desktop integration was successful. Temporary files will be removed."
+    echo "Desktop integration was successful. Temporary files will be removed.";
 fi
 
 popd || {
-    printf "For some reason could not change to ~ before deleting temporary \
+    echo "For some reason could not change to ~ before deleting temporary \
 directories." | fold -sw 80;
 }
 
-echo "Installation successful!"
-DebianUbuntuInstallTempDir=`pwd` # The top of the directory stack.
-rm -Rf ${DebianUbuntuInstallTempDir} || echo "Could not remove temporary files."
+echo "Installation successful!";
+DebianUbuntuInstallTempDir=`pwd`; # The top of the directory stack.
+rm -Rf $DebianUbuntuInstallTempDir; || echo "Could not remove temporary files.";
