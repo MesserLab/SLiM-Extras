@@ -1,7 +1,7 @@
 #!/bin/bash
 # This script downloads the source archive of SLiM, extracts it, creates a build
 # directory and builds the command-line utilities for slim and eidos, and also
-# the SLiMgui IDE. It then installs them to /usr/bin, and installs the
+# the SLiMgui IDE. It then installs them to ${PREFIX}/bin, and installs the
 # FreeDesktop files to the appropriate places for desktop integration.
 
 # Copyright © 2024 Bryce Carson
@@ -9,15 +9,24 @@
 # Please report issues and submit pull requests against the SLiM-Extras GitHub
 # repo, tagging Bryce.
 
-# We need superuser privileges.
-if [ "$(id -u)" -ne 0 ]; then
+if [ $# -ge 1 ]; then
+	echo "Using first argument as PREFIX for install, and assuming it is accessible by the current user.";
+	echo "Determining if the PREFIX is writable and on PATH.";
+	PREFIX=$1;
+	sh -fc 'IFS=:; for p in $PATH""; do [ -w "${p:-.}" ] && {
+	   [ ${PREFIX}="$p" ] || { echo "PREFIX not writable && on PATH"; exit 15; }
+        }; done'
+elif [ "$(id -u)" -ne 0 ]; then
+	# We need superuser privileges.
+	echo "No PREFIX specified in \$1, using PREFIX=/usr."
+	PREFIX=/usr
         echo 'This script must be run by root' >&2
 	echo "Invoke the script with sudo."
         exit 1
 fi
 
 # Test that build requirements are satisfied. If any one requirement is unmet we
-# say which.
+# say which. Unset the variables before running to prevent confusion from earlier runs.
 unset cmakeinstalled qmakeinstalled qtchooserinstalled qtbase5devinstalled \
       curlinstalled wgetinstalled;
 
@@ -199,13 +208,13 @@ EOF
 } && patch -f --verbose -p0 SLiM/CMakeLists.txt CMakeLists.patch || {
     echo "Patching CMakeLists.txt to prevent issue #441 failed. That makes this \
 error a new issue! Lucky you!, with lucky (exit) number thirteen in addition to \
-that!";
+this fact!";
     exit 13;
 }
 
 # Proceed with building and installing if all tests succeeded.
 {  mkdir BUILD && pushd BUILD; } || {
-    echo "Root is unable to create `pwd`/BUILD. This must be a permissions \
+    echo "Root is unable to create `pwd`/BUILD. This is a strange permissions \
 error." | fold -sw 80;
     exit 7;
 }
@@ -213,7 +222,8 @@ error." | fold -sw 80;
 # The build process cmake will follow when building SLiMgui will install desktop
 # integration files when the version of CMake is new enough, otherwise it will
 # not.
-{ cmake -D BUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)"; } || {
+{ cmake -DCMAKE_INSTALL_PREFIX:PATH=${PREFIX} \
+        -DBUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)"; } || {
     logfile="/var/log/SLiM-CMakeOutput-$(date -Is).log";
     echo "Attempting to move logfile to permanent location."
     if [[ -d /var/log && -d CMakeFiles ]]; then
@@ -226,17 +236,17 @@ as %s. You may be asked to upload this file during a support request." $logfile 
     exit 9;
 }
 
-{ mkdir -p /usr/bin /usr/share/icons/hicolor/scalable/apps/ \
-        /usr/share/icons/hicolor/scalable/mimetypes /usr/share/mime/packages \
-        /usr/share/applications /usr/share/metainfo/; } || {
+{ mkdir -p ${PREFIX}/bin ${PREFIX}/share/icons/hicolor/scalable/apps/ \
+        ${PREFIX}/share/icons/hicolor/scalable/mimetypes ${PREFIX}/share/mime/packages \
+        ${PREFIX}/share/applications ${PREFIX}/share/metainfo/; } || {
     echo "Some directory necessary for installation was not successfully \
 created. Please see the output and make a post on the slim-discuss mailing \
 list." | fold -sw 80;
     exit 10;
 }
 
-install slim eidos SLiMgui /usr/bin || {
-    echo "Installation to /usr/bin was unsuccessful. Please see the output and \
+install slim eidos SLiMgui ${PREFIX}/bin || {
+    echo "Installation to ${PREFIX}/bin was unsuccessful. Please see the output and \
 make a post on the slim-discuss mailing list." | fold -sw 80;
     exit 11;
 }
@@ -245,35 +255,36 @@ make a post on the slim-discuss mailing list." | fold -sw 80;
 testversion=`mktemp`
 cat <<EOF > ${testversion}
 if(CMAKE_VERSION VERSION_LESS "3.14")
-  message(FATAL_ERROR "CMAKE_VERSION is less than 3.14")
+  message(WARNING "The following cmake error (generated with FATAL_ERROR messaging) was intentionally generated. It is used to generate a useful exit value from CMake, indicating if the CMake version on your system is new enough. The current implementation of DebianUbuntuInstall.sh depended on this. You may safely ignore that warning.")
+  message(FATAL_ERROR "CMAKE_VERSION is less than 3.14; installing desktop files using cp, update-mime-database, and xdg-mime rather than CMake.")
 endif()
 EOF
 cmake -P ${testversion};
 recentcmake=$?;
 if [[ $recentcmake -ne 0 ]]; then
-    # Exit if installation unsuccessful.
-    echo "Installation to /usr/bin was successful. Proceeding with desktop \
+    echo "Installation to ${PREFIX}/bin was successful. Proceeding with desktop \
 integration." | fold -sw 80;
-    { {rsync -a ../SLiM/data/ /usr/local/share && echo "rsync failed!"} || {
+    { cp -ant ${PREFIX}/share ../SLiM/data/* || {
+	  # Exit if installation unsuccessful.
+	  echo "\`cp -ant\` failed!";
           exit 14;
       }
-      update-mime-database -n /usr/share/mime/;
+      update-mime-database -n ${PREFIX}/mime/;
       xdg-mime install --mode system \
-               /usr/share/mime/packages/org.messerlab.slimgui-mime.xml;
+               ${PREFIX}/share/mime/packages/org.messerlab.slimgui-mime.xml;
     } || {
         echo "Desktop integration failed. Please see the output and make a post
         on the slim-discuss mailing list." | fold -sw 80;
         exit 12;
     }
 
-    echo "Desktop integration was successful. Temporary files will be removed.";
+    echo "Desktop integration was successful.";
 fi
 
 popd || {
-    echo "For some reason could not change to ~ before deleting temporary \
-directories." | fold -sw 80;
+    echo "For some reason could not change to ~ before exiting script." | \
+fold -sw 80;
 }
 
 echo "Installation successful!";
 DebianUbuntuInstallTempDir=`pwd`; # The top of the directory stack.
-rm -Rf $DebianUbuntuInstallTempDir; || echo "Could not remove temporary files.";
