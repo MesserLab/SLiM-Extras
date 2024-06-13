@@ -1,0 +1,203 @@
+\documentclass{article}
+\usepackage{color}
+\usepackage{listings}
+
+
+% see listings documentation
+\lstdefinelanguage{slim}{
+    % Eidos language keywords from 
+    % https://github.com/MesserLab/SLiM/blob/4bcc36a02aeacdc9ee808e38d62836f854246502/eidos/eidos_token.h#L90
+    morekeywords=[1]{if,else,do,while,for,in,next,break,return,function},
+    % SLiM callback keywords from
+    % https://github.com/MesserLab/SLiM/blob/4bcc36a02aeacdc9ee808e38d62836f854246502/core/slim_eidos_block.cpp#L32
+    morekeywords=[2]{first,early,late,initialize,mutationEffect,fitnessEffect,interaction,mateChoice,modifyChild,recombination,mutation,survival,reproduction},
+    % Other special SLiM tokens from
+    % https://github.com/MesserLab/SLiM/blob/4bcc36a02aeacdc9ee808e38d62836f854246502/QtSLiM/QtSLiMSyntaxHighlighting.cpp#L294
+    morekeywords=[3]{sim,community,slimgui,
+        p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,
+        p26,p27,p28,p29,p30,p31,p32,p33,p34,p35,p36,p37,p38,p39,p40,p41,p42,p43,p44,p45,p46,p47,p48,p49,p50,
+        g0,g1,g2,g3,g4,g5,g6,g7,g8,g9,g10,g11,g12,g13,g14,g15,g16,g17,g18,g19,g20,g21,g22,g23,g24,g25,
+        g26,g27,g28,g29,g30,g31,g32,g33,g34,g35,g36,g37,g38,g39,g40,g41,g42,g43,g44,g45,g46,g47,g48,g49,g50,
+        m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20,m21,m22,m23,m24,m25,
+        m26,m27,m28,m29,m30,m31,m32,m33,m34,m35,m36,m37,m38,m39,m40,m41,m42,m43,m44,m45,m46,m47,m48,m49,m50,
+        s0,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20,s21,s22,s23,s24,s25,
+        s26,s27,s28,s29,s30,s31,s32,s33,s34,s35,s36,s37,s38,s39,s40,s41,s42,s43,s44,s45,s46,s47,s48,s49,s50,
+        i0,i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,i16,i17,i18,i19,i20,i21,i22,i23,i24,i25,
+        i26,i27,i28,i29,i30,i31,i32,i33,i34,i35,i36,i37,i38,i39,i40,i41,i42,i43,i44,i45,i46,i47,i48,i49,i50},
+    sensitive=true,
+    morecomment=[l]{//},
+    morestring=[b]",
+}
+% colors from 
+% https://github.com/MesserLab/SLiM/blob/4bcc36a02aeacdc9ee808e38d62836f854246502/QtSLiM/QtSLiMSyntaxHighlighting.cpp#L139
+% numberLiteralFormat.setForeground(inDarkMode ? QColor(115, 145, 255) : QColor(28, 0, 207));
+% stringLiteralFormat.setForeground(inDarkMode ? QColor(220, 98, 90) : QColor(196, 26, 22));
+% commentFormat.setForeground(inDarkMode ? QColor(90, 210, 90) : QColor(0, 116, 0));
+% identifierFormat.setForeground(inDarkMode ? QColor(70, 205, 216) : QColor(63, 110, 116));
+% keywordFormat.setForeground(inDarkMode ? QColor(220, 83, 185) : QColor(170, 13, 145));
+\definecolor{slimstring}{RGB}{196,26,22}
+\definecolor{slimcomment}{RGB}{0,116,0}
+\definecolor{slimidentifier}{RGB}{63,110,116}
+\definecolor{slimkeyword}{RGB}{170,13,145}
+\definecolor{slimstage}{RGB}{40,40,40}
+\definecolor{codegray}{RGB}{128,128,128}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\lstdefinestyle{slimstyle}{
+    language=slim,
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{slimcomment},
+    keywordstyle=[1]\color{slimkeyword},
+    keywordstyle=[2]\color{slimstage},
+    keywordstyle=[3]\color{slimidentifier},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{slimstring},
+    basicstyle=\ttfamily\footnotesize,
+    escapeinside={*@}{@*},
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=2pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=slimstyle}
+
+\title{SLiM code in \LaTeX}
+
+\begin{document}
+
+Here is an example SLiM script.
+It's not the simplest, but it does demonstrate a number of different language features
+to be syntax highlighted.
+
+Note that below we include labels on particular lines,
+so we can refer to them.
+For instance,
+at line~\ref{setup} we use the function defined later,
+at line~\ref{function}.
+The way this works is that the characeters \verb|*@| and \verb|@*| delimit
+code that is ``escaped'' to \LaTeX.
+
+\begin{lstlisting}{language=slim}
+initialize() {
+	initializeSLiMModelType("nonWF");
+	initializeSLiMOptions(dimensionality="xy");
+	
+	defaults = Dictionary(
+		"SEED", getSeed(),
+		"SD", 0.3,         // sigma_D, dispersal distance
+		"SX", 0.3,         // sigma_X, interaction distance for measuring local density
+		"SM", 0.3,         // sigma_M, mate choice distance
+		"K", 5,            // carrying capacity per unit area
+		"LIFETIME", 4,     // average life span
+		"WIDTH", 25.0,     // width of the simulated area
+		"HEIGHT", 25.0,    // height of the simulated area
+		"RUNTIME", 200,    // total number of ticks to run the simulation for
+		"L", 1e8,          // genome length
+		"R", 1e-8,         // recombination rate
+		"MU", 0            // mutation rate
+		);	
+	
+	// Set up parameters with a user-defined function
+    setupParams(defaults); *@ \label{setup} @*
+	
+	// Set up constants that depend on externally defined parameters
+	defineConstant("FECUN", 1 / LIFETIME);
+	defineConstant("RHO", FECUN / ((1 + FECUN) * K));
+	defineConstant("PARAMS", defaults);
+	
+	setSeed(SEED);
+	
+	// basic neutral genetics
+	initializeMutationRate(MU);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, L-1);
+	initializeRecombinationRate(R);
+	
+	// spatial interaction for local density measurement
+	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=3 * SX);
+	i1.setInteractionFunction("n", 1, SX);
+	
+	// spatial interaction for mate choice
+	initializeInteractionType(2, "xy", reciprocal=T, maxDistance=3 * SM);
+	i2.setInteractionFunction("n", 1, SM);
+}
+
+1 first() {
+	sim.addSubpop("p1", asInteger(K * WIDTH * HEIGHT));
+	p1.setSpatialBounds(c(0, 0, WIDTH, HEIGHT));
+	p1.individuals.setSpatialPosition(p1.pointUniform(p1.individualCount));
+}
+
+first() {
+	// preparation for the reproduction() callback
+	i2.evaluate(p1);
+}
+
+reproduction() {
+	mate = i2.drawByStrength(individual, 1);
+	if (mate.size())
+		subpop.addCrossed(individual, mate, count=rpois(1, FECUN));
+}
+
+early() {
+	// Disperse offspring
+	offspring = p1.subsetIndividuals(maxAge=0);
+	p1.deviatePositions(offspring, "reprising", INF, "n", SD);
+		
+	// Measure local density and use it for density regulation
+	i1.evaluate(p1);
+	inds = p1.individuals;
+	competition = i1.localPopulationDensity(inds);
+	inds.fitnessScaling = 1 / (1 + RHO * competition);
+}
+
+late() {
+	if (p1.individualCount == 0) {
+		catn("Population went extinct! Ending the simulation.");
+		sim.simulationFinished();
+	}
+}
+
+RUNTIME late() {
+	catn("End of simulation (run time reached)");
+	sim.treeSeqOutput(OUTPATH, metadata=PARAMS);
+	sim.simulationFinished();
+}
+
+function (void)setupParams(object<Dictionary> defaults)  *@ \label{function} @*
+{
+	if (!exists("PARAMFILE")) defineConstant("PARAMFILE", "./params.json");
+	if (!exists("OUTDIR")) defineConstant("OUTDIR", ".");
+	defaults.addKeysAndValuesFrom(Dictionary("PARAMFILE", PARAMFILE, "OUTDIR", OUTDIR));
+	
+	if (fileExists(PARAMFILE)) {
+		defaults.addKeysAndValuesFrom(Dictionary(readFile(PARAMFILE)));
+		defaults.setValue("READ_FROM_PARAMFILE", PARAMFILE);
+	}
+	
+	defaults.setValue("OUTBASE", OUTDIR + "/out_" +	defaults.getValue("SEED"));
+	defaults.setValue("OUTPATH", defaults.getValue("OUTBASE") + ".trees");
+	
+	for (k in defaults.allKeys) {
+		if (!exists(k))
+			defineConstant(k, defaults.getValue(k));
+		else
+			defaults.setValue(k, executeLambda(k + ";"));
+	}
+	
+	// print out default values
+	catn("===========================");
+	catn("Model constants: " + defaults.serialize("pretty"));
+	catn("===========================");
+}
+\end{lstlisting}
+
+
+\end{document}
+
