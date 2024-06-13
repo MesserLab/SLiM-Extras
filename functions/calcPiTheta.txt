@@ -1,7 +1,10 @@
-function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], [Ni$ start = NULL], [Ni$ end = NULL])
+// Written by Nick Bailey, submitted on 2024-06-13
+// Currently affiliated with CNRS and University of Lyon 1
+// This code is provided in the public domain free of restriction, please credit SLiM-Extras (https://github.com/MesserLab/SLiM-Extras) and myself, Nick Bailey, if you use it
+
 // calculate population genetic statistic pi (designated PiTheta to differentiate from mathematical constant pi)
 // calculations originally in Nei and Li 1979 and Tajima 1983
-
+function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], [Ni$ start = NULL], [Ni$ end = NULL])
 // conduct various checks for proper usage copied straight from calcWattersonTheta()
 { if (genomes.length() == 0)
 		stop("ERROR (calcPiTheta()): genomes must be non-empty.");

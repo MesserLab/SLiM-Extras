@@ -1,5 +1,9 @@
+// Written by Nick Bailey, submitted on 2024-06-13
+// Currently affiliated with CNRS and University of Lyon 1
+// This code is provided in the public domain free of restriction, please credit SLiM-Extras (https://github.com/MesserLab/SLiM-Extras) and myself, Nick Bailey, if you use it
+
+// calculate simple combination equation with only two possible choices in a given selection
 function (integer)combinationTwo(integer x)
-// calculate simply combination equation with only two possible choices in a given selection
 {
 	return asInteger((x * (x - 1)) / 2);
 }
