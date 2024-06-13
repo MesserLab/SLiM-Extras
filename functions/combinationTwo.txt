@@ -1,0 +1,5 @@
+function (integer)combinationTwo(integer x)
+// calculate simply combination equation with only two possible choices in a given selection
+{
+	return asInteger((x * (x - 1)) / 2);
+}
