@@ -2,10 +2,8 @@
 // Currently affiliated with CNRS and University of Lyon 1
 // This code is provided in the public domain free of restriction, please credit SLiM-Extras (https://github.com/MesserLab/SLiM-Extras) and myself, Nick Bailey, if you use it
 
-// calculate neutrality test based on the site frequency spectrum, Tajima's D
-// calculations originally in Tajima 1989
 function (float)calcTajimaD(object<Genome> genomes, [No<Mutation> muts = NULL], [Ni$ start = NULL], [Ni$ end = NULL])
-// conduct various checks for proper usage copied straight from calcWattersonTheta()
+
 { if (genomes.length() == 0)
 		stop("ERROR (calcTajimaD()): genomes must be non-empty.");
 	if (community.allSpecies.length() > 1)
@@ -51,7 +49,7 @@ function (float)calcTajimaD(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	k = size(muts);
 	n = genomes.size();
 	a_1 = sum(1 / 1:(n - 1));
-	a_2 = sum(1 / 1:(n - 1 ^ 2));
+	a_2 = sum(1 / (1:(n - 1)) ^ 2);
 	b_1 = (n + 1) / (3 * (n - 1));
 	b_2 = 2 * (n ^ 2 + n + 3) / (9 * n * (n - 1));
 	c_1 = b_1 - 1 / a_1;
