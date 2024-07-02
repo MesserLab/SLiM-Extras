@@ -44,7 +44,7 @@ function (float)calcTajimaD(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	// do the calculation
 	// Pi and Watterson's theta functions divide by sequence length so this must be undone in Tajima's D
 	// Sequence length is constant (i.e. no missing data or indels) so this can be applied equally over both metrics
-	diff = (calcPiTheta(genomes) - calcWattersonsTheta(genomes)) * (species.chromosome.lastPosition + 1);
+	diff = (calcPiTheta(genomes, muts, start, end) - calcWattersonsTheta(genomes, muts, start, end)) * (species.chromosome.lastPosition + 1);
 	// calculate standard deviation of covariance of pi and Watterson's theta
 	k = size(muts);
 	n = genomes.size();
