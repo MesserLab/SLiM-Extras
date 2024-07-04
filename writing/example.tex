@@ -1,9 +1,11 @@
 \documentclass{article}
-\usepackage{color}
+
+
+%%%%%%%%%%%%%%%%%%%%
+%% SLiM highlighting
+%% copy this into your header
 \usepackage{listings}
-
-
-% see listings documentation
+\usepackage{color}
 \lstdefinelanguage{slim}{
     % Eidos language keywords from 
     % https://github.com/MesserLab/SLiM/blob/4bcc36a02aeacdc9ee808e38d62836f854246502/eidos/eidos_token.h#L90
@@ -65,6 +67,8 @@
     tabsize=2
 }
 \lstset{style=slimstyle}
+%% end SLiM highlighting
+%%%%%%%%%%%%%%%%%%%%$$$$
 
 \title{SLiM code in \LaTeX}
 
