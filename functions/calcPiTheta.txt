@@ -42,8 +42,8 @@ function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	muts = muts[(p != 0.0) & (p != 1.0)];
 	
 	// do the calculation
-	// multiply vector of mutation frequencies by integer count of sequences to get vector of counts of variant sequences
-	varCount = genomes.mutationFrequenciesInGenomes(muts) * size(genomes);
+	// obtain counts of variant sequences for all segregating sites
+	varCount = genomes.mutationCountsInGenomes(muts);
 	// total count of sequences subtracted by count of variant sequences equals count of invariant sequences
 	invarCount = size(genomes) - varCount;
 	// count of pairwise differences per site is the product of counts of both alleles (equation 1 in Korunes and Samuk 2021), this is then summed for all sites 
