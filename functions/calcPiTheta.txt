@@ -49,7 +49,7 @@ function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	// count of pairwise differences per site is the product of counts of both alleles (equation 1 in Korunes and Samuk 2021), this is then summed for all sites 
 	diffs = sum(varCount * invarCount);
 	// pi is the ratio of pairwise differences to number of possible combinations of the given sequences
-	// the latter is calculated by a standard formula defined in a function above (not by default in SLiM)
+	// the latter is calculated by a standard formula defined in combinationTwo function (not by default in SLiM)
 	pi = sum(varCount * invarCount) / combinationTwo(genomes.size());
 	// pi is conventionally averaged per site and this is consistent with SLiM's calculation of Watterson's theta
 	// sequences start at 0, so sequence length is final position plus 1
