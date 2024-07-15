@@ -15,6 +15,8 @@ function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	{
 		species = community.allSpecies;
 	}
+
+        length = species.chromosome.lastPosition + 1;
 	
 	if (isNULL(muts))
 		muts = species.mutations;
@@ -49,6 +51,6 @@ function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	pi = sum(varCount * invarCount) / combinationTwo(genomes.size());
 	// pi is conventionally averaged per site and this is consistent with SLiM's calculation of Watterson's theta
 	// sequences start at 0, so sequence length is final position plus 1
-	avg_pi = pi / (species.chromosome.lastPosition + 1);
+	avg_pi = pi / length;
 	return avg_pi;
 }
