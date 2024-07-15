@@ -1,7 +1,3 @@
-// Written by Nick Bailey, submitted on 2024-06-13
-// Currently affiliated with CNRS and University of Lyon 1
-// This code is provided in the public domain free of restriction, please credit SLiM-Extras (https://github.com/MesserLab/SLiM-Extras) and myself, Nick Bailey, if you use it
-
 function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], [Ni$ start = NULL], [Ni$ end = NULL])
 
 { if (genomes.length() == 0)
