@@ -1,15 +1,15 @@
-function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], [Ni$ start = NULL], [Ni$ end = NULL])
+function (float)calcPi(object<Genome> genomes, [No<Mutation> muts = NULL], [Ni$ start = NULL], [Ni$ end = NULL])
 
 { if (genomes.length() == 0)
-		stop("ERROR (calcPiTheta()): genomes must be non-empty.");
+		stop("ERROR (calcPi()): genomes must be non-empty.");
 	if (community.allSpecies.length() > 1)
 	{
 		species = unique(genomes.individual.subpopulation.species, preserveOrder=F);
 		if (species.length() != 1)
-			stop("ERROR (calcPiTheta()): genomes must all belong to the same species.");
+			stop("ERROR (calcPi()): genomes must all belong to the same species.");
 		if (!isNULL(muts))
 			if (!all(muts.mutationType.species == species))
-				stop("ERROR (calcPiTheta()): muts must all belong to the same species as genomes.");
+				stop("ERROR (calcPi()): muts must all belong to the same species as genomes.");
 	}
 	else
 	{
@@ -25,14 +25,14 @@ function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	if (!isNULL(start) & !isNULL(end))
 	{
 		if (start > end)
-			stop("ERROR (calcPiTheta()): start must be less than or equal to end.");
+			stop("ERROR (calcPi()): start must be less than or equal to end.");
 		mpos = muts.position;
 		muts = muts[(mpos >= start) & (mpos <= end)];
 		length = end - start + 1;
 	}
 	else if (!isNULL(start) | !isNULL(end))
 	{
-		stop("ERROR (calcPiTheta()): start and end must both be NULL or both be non-NULL.");
+		stop("ERROR (calcPi()): start and end must both be NULL or both be non-NULL.");
 	}
 
 	// narrow down to the mutations that are actually present in the genomes and aren't fixed
@@ -43,14 +43,13 @@ function (float)calcPiTheta(object<Genome> genomes, [No<Mutation> muts = NULL], 
 	// obtain counts of variant sequences for all segregating sites
 	varCount = genomes.mutationCountsInGenomes(muts);
 	// total count of sequences subtracted by count of variant sequences equals count of invariant sequences
-	invarCount = size(genomes) - varCount;
+	invarCount = genomes.size() - varCount;
 	// count of pairwise differences per site is the product of counts of both alleles (equation 1 in Korunes and Samuk 2021), this is then summed for all sites 
 	diffs = sum(varCount * invarCount);
 	// pi is the ratio of pairwise differences to number of possible combinations of the given sequences
 	// the latter is calculated by a standard formula defined in combinationTwo function (not by default in SLiM)
-	pi = sum(varCount * invarCount) / combinationTwo(genomes.size());
+	pi = sum(varCount * invarCount) / ((genomes.size() * (genomes.size() - 1)) / 2);;
 	// pi is conventionally averaged per site and this is consistent with SLiM's calculation of Watterson's theta
-	// sequences start at 0, so sequence length is final position plus 1
 	avg_pi = pi / length;
 	return avg_pi;
 }
