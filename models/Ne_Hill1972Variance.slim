@@ -1,0 +1,106 @@
+// Chrystelle Delord and Ben Haller, 1 June 2022: estimate Ne following Hill (1972)
+
+/*
+	This nonWF model shows how to estimate Ne following the method of equation 16 of
+	Hill (1972):
+	
+		Hill, W. G. (1972), Effective size of population with overlapping generations.
+			Theoretical Population Biology 3, 278–289.
+	
+	It was written by Chrystelle Delord with some help from Ben Haller.  This is now
+	Chrystelle's words (with light editing):
+	
+		The equation originally comes from Hill (1972) (Equation 16), but Waples
+		et al. (2011) implemented it in their AgeNe software (their equation 2):
+	
+			Waples, R.S., Do, C. and Chopelet, J. (2011), Calculating Ne and Ne/N in
+				age-structured populations: a hybrid Felsenstein-Hill approach.
+				Ecology 92, 1513-1522. 
+		
+		AgeNe enables one to see the relationship between Ne and vital rates from
+		a life table, under certain conditions -- very useful for simulation
+		purposes!
+		
+		Anyhow, the main prerequisites to apply this Ne formula are that population
+		size and age structure are constant over time.  For subdivided populations
+		and/or populations with size fluctuations, there would probably be better
+		ways of calculating Ne.
+	
+	Back to my words.  This model calculates the estimated Ne from the fate of one
+	specific cohort, comprised of all individuals born in tick 10.  It follows those
+	individuals through time (this method works with overlapping generations) until
+	the whole cohort has died, and then prints the final estimate and stops.  The
+	bookkeeping involved is somewhat complex, and uses information gathered by
+	SLiM's pedigree tracking feature, so keepPedigrees=T is required for it to work.
+	Because of this multi-tick bookkeeping, extending this to produce an estimate
+	for every tick's cohort would be a bit of a hassle, probably keeping all the
+	bookkeeping in a Dictionary keyed by the cohort's birth tick.  That is left as
+	an exercise for the reader.
+	
+	Ben Haller, 29 August 2024
+*/
+
+initialize() {
+	defineConstant("K", 10000);	// census population size
+	initializeSLiMModelType("nonWF");
+	initializeSLiMOptions(keepPedigrees=T);
+	
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	m1.convertToSubstitution = T;
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 99999);
+	initializeMutationRate(1e-7);
+	initializeRecombinationRate(1e-8);
+}
+
+reproduction() {
+	subpop.addCrossed(individual, subpop.sampleIndividuals(1));
+}
+
+1 early() {
+	sim.addSubpop("p1", K);
+}
+
+early() {
+	p1.fitnessScaling = K / p1.individualCount;
+}
+
+10 early() {
+	// collect initial information on the cohort born in tick 10
+	all_inds = p1.individuals;
+	juveniles = all_inds[p1.individuals.age == 0];
+	parent_pedigreeIDs = juveniles.pedigreeParentIDs;
+	inds_PIDs = all_inds.pedigreeID;
+	parent_matches = match(parent_pedigreeIDs, inds_PIDs);
+	parents = all_inds[parent_matches];
+	
+	defineConstant("COHORT_SIZE", size(juveniles));
+	defineConstant("MEAN_PARENT_AGE", mean(parents.age));
+	defineGlobal("REPRO_OUT", integer(0));
+}
+
+10: late() {
+	// check that all individuals in the cohort have died;
+	// return if any cohort individuals are still alive
+	if (any(p1.individuals.age == community.tick - 10))
+		return;
+	
+	// print our Ne estimate and terminate
+	print(4 * COHORT_SIZE * MEAN_PARENT_AGE / (var(REPRO_OUT) + 2));
+	community.simulationFinished();
+}
+
+survival() {
+	// take notes on the reproductive output of individuals born
+	// in tick 10, at the point when they die (surviving == F)
+	if ((surviving == F) & (individual.age == community.tick - 10))  {
+		output = individual.reproductiveOutput;
+		defineGlobal("REPRO_OUT", c(REPRO_OUT, output));
+	}
+	
+	// return NULL to accept SLiM's survivial decision; we are
+	// just bookkeeping, not modifying survival
+	return NULL;
+}
+
+1000 late() { }
