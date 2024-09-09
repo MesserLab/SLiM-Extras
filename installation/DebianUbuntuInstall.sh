@@ -86,7 +86,7 @@ inspect this script, and your system, as other issues may exist." | fold -sw 80;
 }
 
 if [[ $curlinstalled == 0 ]]; then
-    { curl https://github.com/MesserLab/SLiM/archive/refs/tags/v4.2.2.tar.gz > \
+    { curl -L https://github.com/MesserLab/SLiM/archive/refs/tags/v4.2.2.tar.gz > \
            SLiM-4.2.2.tar.gz && tar -x -f SLiM-4.2.2.tar.gz && \
           mv SLiM-4.2.2 SLiM;
     } || {
