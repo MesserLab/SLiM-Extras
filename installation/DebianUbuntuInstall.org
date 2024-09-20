@@ -1,0 +1,417 @@
+* Introduction
+This document is a literate program. It describes the implementation details of
+=DebianUbuntuInstall.sh=, a shell program written in /BASH/. The program is used
+by the /SLiM/ community to install the /SLiMgui/ IDE and related binaries and
+files on supported versions of the /Debian/ and /Ubuntu/ operating systems. The
+related binaries are the =slim= and =eidos= programs, and the related files are
+those used for desktop integration (file type associations, desktop icon, menu
+entry, et cetera).
+
+Previously, the script was not a literate program. It has been made literate so
+that others may better understand it if they are not familiar with the /BASH/
+langauge features used and to make this part of the SLiM community more
+self-sufficient. Contributing editions to the install script should be easier
+when end-users are able to read the script from the original developers point of
+view.
+
+In summary, this script downloads the latest sources by querying the GitHub API,
+ensures dependencies are available for building SLiM, Eidos, and SLiMgui, and
+then installs the software and related XDG desktop files for desktop environment
+integration.
+
+#+name: download and decompress latest source tarball to directory named SLiM
+#+begin_src bash
+  local queryResponse=`mktemp`;
+  wget -q -O- 'https://api.github.com/repos/MesserLab/SLiM/releases/latest' > $queryResponse
+  wget "`awk '/tarball_url/ { split($0, arr, \"\\"\"); print(arr[4]); }' $queryResponse`" || {
+    echo "Failed to download latest tagged release tarball, or decompress and unarchive it.";
+    exit 4;
+  }
+  local version=`awk '/tag_name/ { split($0, arr, "\""); print(arr[4]); }' $queryResponse`
+  tar -x -f ${version} && \
+    find -D exec \
+         $(dirs | cut --delimiter=" " --field 1) \
+         -type d \
+         -name "MesserLab-SLiM-*" -execdir mv '{}' SLiM \;;
+#+end_src
+
+** Differences in installed software between operating systems
+Debian 11 doesn't officially support Qt 6 unless the backports repository is
+enabled, otherwise only Qt 5 is supported and available. Debian 12 is the first
+to officially support Qt 6 in the main software repository. Ubuntu 22.04 is the
+first version to officialy support Qt 6, and derives its sources from Bullseye
+(Sid), so that is what version we check for to see if Ubuntu should use Qt 5 or
+Qt 6.
+
+In short, everything newer than Debian 11 or Bullseye/Sid uses Qt 6, othwerise
+Qt 5 is used unless backports is enabled (a separate test).
+
+#+name: determine the name of the Qt package
+#+begin_src bash
+  # Declare the local variable QT_PKGNAME
+  if grep -E "(11)|(bullseye/sid)" /etc/debian_version; then {
+    local QT_PKGNAME="qtbase5-dev";
+    local QMAKE_PKGNAME="qt5-qmake";
+    # Redefine QT_PKGNAME if the system is Debian and backports is enabled.
+    if grep "Vendor: Debian" /etc/dpkg/origins/default; then {
+      if grep "^[^#]*backport*" /etc/apt/sources.list; then
+        QT_PKGNAME="qt6-base-dev";
+        QMAKE_PKGNAME="qmake6";
+      fi
+    }
+    fi
+  }
+  else
+    local QT_PKGNAME="qt6-base-dev";
+    local QMAKE_PKGNAME="qmake6";
+  fi
+#+end_src
+
+* Implementing =DebianUbuntuInstall.sh=
+The script is implemented using only commands which can be expected to be
+present on both Debian and Ubuntu, in any reasonable configuration (one which
+isn't broken or misconfigured).
+
+** Overall structure of the BASH script
+The following root chunk emits the actual shell script, referencing all other
+chunks as necessary. The order of reference determines the behaviour of the
+program and it should not be changed unless you know what you're doing and are
+intimately familiar with /BASH/ and are also familiar with /Noweb/ or Org Babel.
+
+The header of the script contains the shebang line and some unnecessary
+copyright information for nation-states which don't respect copyleft notices or
+public domain. I don't know why it would matter, but it's there.
+
+#+name: DebianUbuntuInstall.sh
+#+begin_src bash :noweb no-export :tangle DebianUbuntuInstall.sh
+  <<shebang, copyright, and synopsis>>
+
+  # Modified from Keith Thompson's answer here: https://stackoverflow.com/a/17752318.
+  if [ ! "$BASH_VERSION" ]; then
+    echo "Please do not use sh to run this script ($0); \
+    execute the script with the following syntax:\
+  \
+    ./$0" 1>&2;
+    exit 1;
+  fi
+
+  build-and-install-SLiMgui-on-Debian-or-Ubuntu() {
+    # Make shell options local to this function, and yap; when the function exits
+    # the shell will stop yapping, unless it was already yapping before entering
+    # this function.
+    local -
+    if $VERBOSE; then set -x; fi
+
+    ## TEST WRITE ACCESS
+    <<test if the user has access to =PREFIX=, which is =/usr= by defualt>>
+
+    ## DEPENDENCY DETECTION
+    <<dependency detection>>
+
+    ## DOWNLOAD AND DECOMPRESS SOURCES
+    <<download and decompress latest source tarball to directory named SLiM>>
+
+    ## BUILD AND INSTALL
+    <<build and install SLiMgui>>
+  }
+
+  <<argument processing>>
+
+  build-and-install-SLiMgui-on-Debian-or-Ubuntu
+#+end_src
+
+It is nice to have arguments. The followign section is copied and adapted from
+Urban Vagabon's StackOverflow answer here:
+https://stackoverflow.com/a/7948533/14211497.
+
+#+name: argument processing
+#+begin_src bash
+  TEMP=$(getopt -o vihp: --long verbose,install-dependencies,prefix: -n 'DebianUbuntuInstall.sh' -- "$@")
+  if [ $? != 0 ]; then
+    echo "getopts(1) failed to canonicalize arguments; terminating..." >&2;
+    exit 1;
+  fi
+
+  eval set -- "$TEMP"
+
+  VERBOSE=false;
+  INSTALL_DEPS=false;
+  PREFIX=${PREFIX:-"/usr"}
+
+  while true; do
+    case $1 in
+      -v|--verbose) echo "Enabling verbose mode."; VERBOSE=true; shift;;
+      -i|--install-dependencies) INSTALL_DEPS=true; shift;;
+      -p|--prefix) PREFIX=$2; shift 2;;
+      -h|--help) synopsis; exit;;
+      *) break;;
+    esac
+  done
+#+end_src
+
+#+name: shebang, copyright, and synopsis
+#+begin_src bash
+  #!/usr/bin/env bash
+  # This script downloads the source archive of SLiM, extracts it, creates a build
+  # directory and builds the command-line utilities for slim and eidos, and also
+  # the SLiMgui IDE. It then installs them to /usr/bin, and installs the
+  # FreeDesktop files to the appropriate places for desktop integration.
+
+  # Copyright © 2024 Bryce Carson
+  # Script released under the terms of the GNU GPL v3.0, or (at your option) a
+  # later version.
+
+  # Please report issues and submit pull requests against the SLiM-Extras GitHub
+  # repo, tagging Bryce.
+
+  synopsis() {
+    echo "DebianUbuntuInstall.sh \
+    Include the i option to automatically install missing dependencies (requires root). \
+    Include the p option to specify an installation PREFIX, or use an environment variable PREFIX. This argument value will take precedence over the environment variable if both are exist. \
+    Include the v option to enable shell-level verbosity (i.e. 'set -x'). \
+    Include the h option to print this synopsis. \
+  \n\
+    Each option has a corresponding long option. The compatible short options may be combined (e.g. 'DebianUbuntuInstall.sh -vip ~/.local') \
+    -v | --verbose \
+    -i | --install-dependencies \
+    -p | --prefix ~/.local, exempli gratia \
+    -h | --help"
+  }
+#+end_src
+
+** Configuring the installation prefix
+The script installs /SLiM/ to a system directory (by default), so that all users
+have access to the program and it is assured to be on the =PATH=. The =PREFIX=
+may be a system directory, so in that case the script needs superuser
+priveleges; to prevent always requiring superuser privileges and scaring some
+users, especiallly those who only want a local installation, the request for
+superuser privileges is protected on the condition that the =PREFIX= has been
+set to a directory the current user does not have full permissions to.
+
+The third argument to the main function
+(=build-and-install-SLiMgui-on-Debian-or-Ubuntu=, hereafter just "main") is the
+installation prefix, and it needs to be writable by the current user (whomever
+that is, root or not).
+
+The input field separator is set to =:=, as the =PATH= variable is
+colon-delimited. For every path =p= in =PATH=, that path =p= is tested for being
+writable by the current user. For /every writable PATH-member/ =p= nothing is
+done, but for /every non-writable PATH-member/ =p= if it is the same as the
+=PREFIX= an error message is printed and the script exits. This ensures that
+=PREFIX= is on the path and writable by the calling user.
+
+#+name: test if the user has access to =PREFIX=, which is =/usr= by defualt
+#+begin_src bash
+  IFS=:;
+  ## MAYBE FIXME: is the empty string a null-terminator for PATH, or a syntax
+  ## mistake and PATH should be quoted? I don't know right now.
+  for p in $PATH""; do
+    [ -w "${p:-.}" ] || {
+      [ "${PREFIX}/bin" = "$p" ] && {
+        echo "${PREFIX} not writable, but in the PATH variable. You likely need \
+        to become root or use sudo." | fold;
+        exit 15;
+      }
+    };
+  done
+
+  if [ ! -w "$PREFIX" ]; then echo "${PREFIX} is not writable."; exit 99; fi
+#+end_src
+
+** Querying the dpkg database with =dpkg-query=
+Using =dpkg-query=, the required packages which are installed are counted and
+any missing packages are installed if the calling user is root. If the user
+isn't root a message is reported and the script exists, per the fashion of this
+script.
+
+Incrementing or decrementing the counter isn't a very complex operation,
+but it is defined in another Noweb chunk so that it can be discussed separately
+in more detail.
+
+#+name: dependency detection
+#+begin_src bash :noweb yes
+  <<determine the name of the Qt package>>
+
+  local REQUIRED_PACKAGES_INSTALLED=0;
+  for PKG_NAME in build-essential cmake ${QMAKE_PKGNAME} qtchooser ${QT_PKGNAME};
+  do
+    <<increment or decrement the counter appropriately>>
+  done
+
+  if [[ ${REQUIRED_PACKAGES_INSTALLED} -ne 5 ]]; then
+    if [ "$(id -u)" -eq 0 ]; then
+      # If the user is root install the missing package(s) on their behalf, if they wish.
+      if $INSTALL_DEPS; then
+        apt-get install --assume-yes cmake ${QMAKE_PKGNAME} qtchooser $QT_PKGNAME;
+      fi
+    else
+      echo "A required package is missing. \
+          Install the missing package(s) with 'sudo apt install PACKAGE'. \
+          EXIT 1"; exit 1;
+    fi
+  fi
+
+  # Create a temporary directory and change to it to proceed  with building.
+  pushd "$(mktemp -d)" || {
+    echo \
+      "The Filesystem Hierarchy-standard directory /tmp does not exist, \
+  $TMPDIR is not set, or some strange permissions issue exists with root and \
+  one of these locations. Resolve the issue by creating that directory; \
+  inspect this script, and your system, as other issues may exist." | \
+      fold -sw 80;
+    exit 3;
+  }
+#+end_src
+
+Formerly a helper function =package-installed= was called to set the value of
+=PKG_INSTALLED=, but just as well a subshell can be used directly. The status of
+package =PKG_NAME= is queried using the appropriate tool, ignoring standard
+error for a reason I don't remember (it's probably unnecessary). The standard
+output is grepped to see if the expected installation status is present in that
+stream. Anything other than the expected output is considered false, with the
+expected output being a zero status code from =grep=.
+
+The string "YES" or "NO" is stored in a variable, alike the =PKG_NAME= for
+whatever package the loop is currently wondering about with dpkg. (Yes, loops
+don't really wonder, but won't you have a sense of wonderment with me? For just
+a while?)
+
+#+name: increment or decrement the counter appropriately
+#+begin_src bash
+  # Increment the counter if the package is installed, otherwise report that it is
+  # missing.
+  if dpkg-query -s "$PKG_NAME" 2>/dev/null | \
+      grep -q "^Status: install ok installed$"; then
+    echo "Required package ${PKG_NAME} installed? YES";
+    (( REQUIRED_PACKAGES_INSTALLED+=1 ));
+  else
+    echo "Required package ${PKG_NAME} installed? NO";
+  fi
+#+end_src
+
+** Build and install SLiMgui
+This section isn't very complex; we build the software in a directory separate
+from the sources and then install the built software as appropriate. If the
+available installation of CMake is recent enough it is used to install the
+desktop environment integration files, otherwise they're installed using shell
+utilities.
+
+#+name: build and install SLiMgui
+#+begin_src bash :noweb no-export
+  <<build SLiMgui with CMake>>
+  <<install desktop files manually if CMake is too old>>
+#+end_src
+
+*** Build SLiMgui
+The build directory is created and then CMake is directed to build SLiMgui using
+the sources in the SLiM directory using as many cores as the system has. The
+CMake script variable =PATH= is set as the =CMAKE_INSTALLATION_PREFIX=, so when
+CMake is responsible for installing 
+
+#+name: build SLiMgui with CMake
+#+begin_src bash :noweb no-export
+    # Proceed with building and installing if all tests succeeded.
+    {  mkdir BUILD && pushd BUILD; } || {
+      echo "Unable to create '$(pwd)/BUILD' due to a permissions error."
+      exit 7;
+    }
+
+    # The build process cmake will follow when building SLiMgui will install desktop
+    # integration files when the version of CMake is new enough, otherwise it will
+    # not.
+    { cmake -DCMAKE_INSTALL_PREFIX:PATH="${PREFIX}" \
+            -DBUILD_SLIMGUI=ON ../SLiM && make -j"$(nproc)"; } || {
+      local logfile;
+      logfile="/var/log/SLiM-CMakeOutput-$(date -Is).log";
+      echo "Attempting to move logfile to permanent location."
+      if [[ -d /var/log && -w "$logfile" && -d CMakeFiles ]]; then
+        mv CMakeFiles/CMakeOutput.log "$logfile" || exit 8;
+      else
+        echo "${logfile} is not writable, writing to ~ instead."
+        logfile="${HOME}/SLiM-CMakeOutput-$(date -Is).log";
+        mv CMakeFiles/CMakeOutput.log "$logfile" || exit 8;
+      fi;
+      printf "Build failed. Please see the output and make a post on the \
+    slim-discuss mailing list. The output from this build is stored in '/var/log/' \
+    as %s. You may be asked to upload this file during a support request." "$logfile" \
+        | fold -sw 80;
+      exit 9;
+    }
+#+end_src
+
+*** Install to an XDG directory tree under =PREFIX=
+The following chunk specifies the directory tree which must be created (if
+necessary) when installing desktop integration files manually. The directories
+are only created if they don't already exist, and they're only created if manual
+installation is occurring (due to the order of Noweb chunk expansion).
+
+#+name: create XDG directory tree underneath =PREFIX=
+#+begin_src bash
+  { mkdir -p ${PREFIX}/bin ${PREFIX}/share/icons/hicolor/scalable/apps/ \
+          ${PREFIX}/share/icons/hicolor/scalable/mimetypes ${PREFIX}/share/mime/packages \
+          ${PREFIX}/share/applications ${PREFIX}/share/metainfo/; } || {
+    echo "Some directory necessary for installation was not successfully \
+  created. Please see the output and make a post on the slim-discuss mailing \
+  list." | fold -sw 80;
+    exit 10;
+  }
+#+end_src
+
+Finally, desktop integration is performed manually if CMake is too old (and thus
+CMake didn't try to do it itself). The recency of CMake is tested simply by
+using =find= to locate a SLiMgui desktop file modified (by installing it again)
+within one minute previous of the current time. It's reasonable to conclude that
+a user wouldn't run this script more than once per minute, so that's a
+reasonable time to test if we need to install the desktop files. Any result
+older than that will be considered failure, meaning the desktop files were not
+installed by CMake and must be installed using this procedure.
+
+If the desktop file is newer than the =slim= binary this indicates that CMake
+installed it, because CMake, when recent enough, installs the desktop files
+before installing SLiMgui and after installing the =slim= and =eidos= binaries.
+
+#+name: install desktop files manually if CMake is too old
+#+begin_src bash :noweb no-export
+  make install
+
+  if [ ../SLiM/data/applications/org.messerlab.slimgui.desktop \
+                -nt ${PREFIX}/bin/slim ]; then
+    {
+      <<create XDG directory tree underneath =PREFIX=>>
+
+      cp -ant ${PREFIX}/share ../SLiM/data/* || {
+        # Exit if installation unsuccessful.
+        echo "cp -ant failed!";
+        exit 14;
+      }
+
+      update-mime-database -n ${PREFIX}/mime/;
+      xdg-mime install --mode system \
+               ${PREFIX}/share/mime/packages/org.messerlab.slimgui-mime.xml;
+    } || {
+      echo "Desktop integration failed using 'cp -ant'. Please see the output \
+      and make an issue on the SLiM-Extras GitHub repository." | fold -sw 80;
+      exit 12;
+    }
+
+    for file in \
+      ${PREFIX}/bin/eidos \
+               ${PREFIX}/bin/slim \
+               ${PREFIX}/bin/SLiMgui \
+               ${PREFIX}/share/applications/org.messerlab.slimgui.desktop \
+               ${PREFIX}/share/icons/hicolor/scalable/apps/org.messerlab.slimgui.svg \
+               ${PREFIX}/share/icons/hicolor/scalable/mimetypes/text-slim.svg \
+               ${PREFIX}/share/icons/hicolor/symbolic/apps/org.messerlab.slimgui-symbolic.svg \
+               ${PREFIX}/share/metainfo/org.messerlab.slimgui.appdata.xml \
+               ${PREFIX}/share/metainfo/org.messerlab.slimgui.metainfo.xml \
+               ${PREFIX}/share/mime/packages/org.messerlab.slimgui-mime.xml
+    do
+      if [ ! -f $file ]; then
+        echo "$file was not installed correctly.";
+        exit 42;
+      else
+        echo "$file was installed correctly.";
+      fi
+    done
+  fi
+#+end_src
