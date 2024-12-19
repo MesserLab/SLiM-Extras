@@ -1,0 +1,167 @@
+initialize() {
+    initializeSLiMOptions(nucleotideBased=T);
+    defineConstant("L", 1010000);              // Genome length
+    defineConstant("DUP_LENGTH", 10000);       // Duplication size
+    defineConstant("DUP_START", L - DUP_LENGTH);  // Start position of duplication
+    defineConstant("N", 500);                  // Population size
+
+    initializeTreeSeq();
+
+    // Generate random nucleotides for the first L - DUP_LENGTH bases
+    randomPart = sample(c("A", "T", "C", "G"), L - DUP_LENGTH - 1, replace=T);
+
+    // Define the segment to duplicate (last DUP_LENGTH bases of randomPart)
+    duplicatedPart = randomPart[(length(randomPart) - DUP_LENGTH):length(randomPart) - 1];
+
+    // Combine randomPart and duplicatedPart to form the full sequence
+    fullSequence = c(randomPart, duplicatedPart);
+
+    // Initialize the ancestral sequence with the full sequence
+    initializeAncestralNucleotides(fullSequence);
+
+
+
+    // Define mutation types
+    initializeMutationTypeNuc("m1", 0.5, "f", 0.0);  // Neutral mutations
+    initializeMutationType("m2", 0.5, "f", 0.0);     // Duplication marker
+    m2.color = "red";
+    m2.convertToSubstitution = F;
+
+    // Define genomic element
+    initializeGenomicElementType("g1", m1, 1.0, mmJukesCantor(1e-7));
+    initializeGenomicElement(g1, 0, L - 1);
+
+    // Set recombination rate
+    initializeRecombinationRate(1e-8);
+}
+
+
+1 early() {
+    defineConstant("simID", getSeed());
+    sim.addSubpop("p1", N);  // Initialize population
+}
+
+recombination() {
+    gm1 = genome1.containsMarkerMutation(m2, DUP_START);
+    gm2 = genome2.containsMarkerMutation(m2, DUP_START);
+    if (!(gm1 | gm2)) {
+        // homozygote non-duplicated
+        // Filter breakpoints that exceed the recombination limit
+        breakpoints = breakpoints[breakpoints < DUP_START];
+
+        // If no breakpoints remain after filtering, return F (no recombination)
+        if (length(breakpoints) == 0) {
+            return F;
+        }
+
+        // Otherwise, allow the filtered breakpoints to proceed
+        return T;
+    }
+    if (gm1 & gm2) {
+        //homozygot duplication
+        return F;
+    }
+        else {
+        // heterozygote duplicated: resample to get an even # of breakpoints
+        // Filter breakpoints that exceed the recombination limit
+        breakpoints = breakpoints[breakpoints < DUP_START];
+
+        // If no breakpoints remain after filtering, return F (no recombination)
+        if (length(breakpoints) == 0) {
+            return F;
+        }
+
+        // Otherwise, allow the filtered breakpoints to proceed
+        return T;
+    }
+}
+
+2:999 late(){
+    for (genome in p1.genomes) {
+        // Check if the genome does NOT have the marker mutation m2 at DUP_START
+        allMuts = 0;
+        if (!(genome.containsMarkerMutation(m2, DUP_START))) {
+
+allMuts = genome.mutations;
+mutsToRemove = allMuts[allMuts.position > DUP_START];
+sim.subpopulations.genomes.removeMutations(mutsToRemove);
+
+}
+}
+
+}
+
+
+1000 late() {
+    sim.outputFull(tempdir() + "burnin_" + simID + ".txt");  // Save state after burn-in
+    catn("Burn-in phase complete. State saved.");
+}
+
+
+1001 late() {
+    // Introduce duplication mutation in one individual
+    duplicated = sample(p1.genomes, 1);
+    duplicated.addNewDrawnMutation(m2, DUP_START);
+    catn("Duplication mutation introduced at generation 1001.");
+
+    // Copy mutations from the original region to the duplicated region
+    originalRegion = c(DUP_START - DUP_LENGTH, DUP_START - 1);
+
+    // Identify mutations in the original region
+    mutsToCopy = duplicated.mutations[duplicated.mutations.position >= originalRegion[0] & duplicated.mutations.position <= originalRegion[1]];
+
+    // Duplicate these mutations to the new region
+    for (mut in mutsToCopy) {
+        newPosition = mut.position + DUP_LENGTH;
+        duplicated.addNewDrawnMutation(mut.mutationType, newPosition, p1, mut.nucleotide);
+    }
+
+    catn(length(mutsToCopy) + " mutations copied to duplicated region.");
+}
+
+
+1002:11000 early() {
+    // Check if m2 is lost
+    if (sim.countOfMutationsOfType(m2) == 0) {
+        catn("Duplication lost. Restarting from save-state...");
+        sim.readFromPopulationFile(tempdir() + "burnin_" + simID + ".txt");  // Reset to burn-in state
+
+        // Reintroduce duplication mutation
+        duplicated = sample(p1.genomes, 1);
+        duplicated.addNewDrawnMutation(m2, DUP_START);
+        setSeed(rdunif(1, 0, asInteger(2^62) - 1));  // Reseed simulation
+    }
+}
+
+1002:10999 late(){
+    for (genome in p1.genomes) {
+        // Check if the genome does NOT have the marker mutation m2 at DUP_START
+        allMuts = 0;
+        if (!(genome.containsMarkerMutation(m2, DUP_START))) {
+
+allMuts = genome.mutations;
+mutsToRemove = allMuts[allMuts.position > DUP_START];
+sim.subpopulations.genomes.removeMutations(mutsToRemove);
+
+}
+}
+
+}
+
+
+11000 late() {
+    // Summarize results
+  //sim.outputFixedMutations(); // Assess fixation inside vs. outside the inversion
+pos1 = sim.substitutions.position;
+catn(sum((pos1 > DUP_START)) + " fixations inside duplication.");
+catn(sum((pos1 < DUP_START)) + " fixations outside duplication.");
+cunt = p1.genomes.countOfMutationsOfType(m2);
+catn(sum(cunt) + "duplicated genes");
+catn(sum(sim.substitutions.mutationType == m2));
+
+    sim.treeSeqOutput("output.trees");  // Output tree sequence
+    p1.outputVCFSample(50, filePath = "OP.vcf", simplifyNucleotides = T);
+
+}
+
+
