@@ -73,12 +73,12 @@ recombination() {
     }
 }
 
-10000 late() {
+1000 late() {
     sim.outputFull(tempdir() + "burnin_" + simID + ".txt");  // Save state after burn-in
     catn("Burn-in phase complete. State saved.");
 }
 
-10001 late() {
+1001 late() {
     // Introduce duplication mutation in one individual
     duplicated = sample(p1.genomes, 1);
     duplicated.addNewDrawnMutation(m2, DUP_START);
@@ -133,7 +133,7 @@ recombination() {
 }
 
 
-10002: late() {
+1002: late() {
     // Check if m2 is lost
     if (sim.countOfMutationsOfType(m2) == 0) {
         catn("Duplication lost. Restarting from save-state...");
