@@ -73,55 +73,71 @@ recombination() {
     }
 }
 
-1000 late() {
+10000 late() {
     sim.outputFull(tempdir() + "burnin_" + simID + ".txt");  // Save state after burn-in
     catn("Burn-in phase complete. State saved.");
 }
 
-1001 late() {
+10001 late() {
     // Introduce duplication mutation in one individual
     duplicated = sample(p1.genomes, 1);
     duplicated.addNewDrawnMutation(m2, DUP_START);
-    catn("Duplication mutation introduced at generation 1001.");
+    catn("Duplication mutation introduced at generation 10001.");
 
-    // Copy mutations from the original region to the duplicated region
+    // Define the original region
     originalRegion = c(DUP_START - DUP_LENGTH, DUP_START - 1);
 
-    //Copying substitutions that are in the original region into the duplicated region as mutations
+    newPos = c();
+    newPoisition = c();
+    mutsToCopy = c();
+
+    // -----------------------------
+    // Step 1: Copy Substitutions
+    // -----------------------------
     substitutionsInRegion = sim.substitutions[sim.substitutions.position >= originalRegion[0] & sim.substitutions.position <= originalRegion[1]];
+
+    catn("Number of substitutions in original region: " + length(substitutionsInRegion));
+
     for (sub in substitutionsInRegion) {
         newPos = sub.position + DUP_LENGTH;
-        // create a new mutation that recapitulates sub’s effect
+        // Create a new mutation replicating the substitutions effect
         duplicated.addNewMutation(sub.mutationType, sub.selectionCoeff, newPos, p1, sub.nucleotide);
+        catn("Copied substitution: Type=" + ", Position=" + newPos + ", Nucleotide=" + sub.nucleotide);
     }
-    // Now copy active, non-fixed mutations
 
-    // Identify mutations in the original region
-    dupMuts = duplicated.mutations;
-    dupMutsPos = dupMuts.position;
-    mutsToCopy = dupMuts[dupMutsPos >= originalRegion[0] & dupMutsPos <= originalRegion[1]];
+    // -----------------------------
+    // Step 2: Copy Active Mutations
+    // -----------------------------
+    mutsToCopy = duplicated.mutations[duplicated.mutations.position >= originalRegion[0] & duplicated.mutations.position <= originalRegion[1]];
 
-    // Duplicate these mutations to the new region
+    catn("Number of active mutations in original region: " + length(mutsToCopy));
+
     for (mut in mutsToCopy) {
         newPosition = asInteger(mut.position + DUP_LENGTH);
         duplicated.addNewMutation(mut.mutationType, mut.selectionCoeff, newPosition, p1, mut.nucleotide);
+        catn("Copied active mutation: Type=" + ", Position=" + newPosition + ", Nucleotide=" + mut.nucleotide);
     }
 
-    //Check wheter or not the duplication acctually succeded in copying the genomic elemenet
+    // -----------------------------
+    // Step 3: Verify Duplication
+    // -----------------------------
+    // Retrieve the nucleotide sequences for comparison
     originalSeq = duplicated.nucleotides(originalRegion[0], originalRegion[1]);
     duplicatedSeq = duplicated.nucleotides(originalRegion[0] + DUP_LENGTH, originalRegion[1] + DUP_LENGTH);
     if (originalSeq != duplicatedSeq) {
         stop("Duplicated region does not match original region. Check substitution copying logic!");
     }
 
-    catn(length(mutsToCopy) + " mutations copied to duplicated region.");
+    catn(length(mutsToCopy) + " active mutations copied to duplicated region.");
+    sim.outputFull(tempdir() + "afterDup_" + simID + ".txt");  // Save state after burn-in
 }
 
-1002:11000 late() {
+
+10002: late() {
     // Check if m2 is lost
     if (sim.countOfMutationsOfType(m2) == 0) {
         catn("Duplication lost. Restarting from save-state...");
-        sim.readFromPopulationFile(tempdir() + "burnin_" + simID + ".txt");  // Reset to burn-in state
+        sim.readFromPopulationFile(tempdir() + "afterDup_" + simID + ".txt");  // Reset to after duplication event inorder to not lose substitutions that should be copied  
     }
 }
 
