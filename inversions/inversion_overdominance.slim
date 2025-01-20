@@ -24,10 +24,10 @@ initialize() {
   initializeRecombinationRate(rbp);
 }
 
-fitness(m2) {
-  // the frequency dependent system in the SLiM manual
-  f = sim.mutationFrequencies(NULL, mut);
-  return 1.0 - (f - 0.5)*0.2;
+mutationEffect(m2) {
+	// fitness of the inversion is frequency-dependent
+	f = sim.mutationFrequencies(NULL, mut);
+	return 1.0 - (f - 0.5) * 0.2;
 }
 
 1 early() {
@@ -40,7 +40,7 @@ fitness(m2) {
 }
 
 5000 late() {
-  catn(sim.generation);
+  catn(sim.cycle);
   metadata = Dictionary();
   metadata.setValue("inversion_coords", c(inv_start, inv_end));
   metadata.setValue("N", N);

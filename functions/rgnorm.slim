@@ -1,0 +1,201 @@
+// Drawing from a generalized normal distribution: Matteo Caroulle and Ben Haller
+
+/*
+	This script implements a function `rgnorm()` that draws from a generalized normal
+	distribution.  This might be useful in itself; but it also shows how to call out
+	to Python or R using system() to get functionality that is not available in Eidos.
+	
+	Wikipedia discusses the generalized normal distribution here:
+	
+		https://en.wikipedia.org/wiki/Generalized_normal_distribution
+	
+	The function implemented here is:
+	
+		(float)rgnorm(integer$ n, [float beta = 0.5], [float mu = 0.0],
+			[float alpha = 0.25])
+			
+	where n is the number of draws, beta is the shape parameter, loc is the location
+	parameter, and scale is the scale parameter.
+	
+	Note this requires Python to be installed, with the numpy and scipy packages.
+	Also, check the path to `python` in the code below, defined as PYTHON_PATH.
+	
+	It takes a little time to run rgnorm(), since Python has to be launched, so if you
+	will need a lot of draws it would be a good idea to draw, say, 10,000 at a time
+	and keep the draws in a global variable with `defineGlobal()`, and use them one by
+	one without having to call `rgnorm()` for each one.  That is demonstrated below
+	with the functions:
+	
+		(object<Dictionary>$)buffered_rgnorm_config([integer$ bufsize = 100000],
+			[float beta = 0.5], [float mu = 0.0], [float alpha = 0.25])
+		
+		(float)buffered_rgnorm(object<Dictionary>$ bufDict, integer$ n)
+	
+	Both the vanilla rgnorm() and the buffered version are demonstrated.  Of course
+	all the debugging output should be removed for use in production code.
+	
+	The vanilla rgnorm() was implemented by Matteo Caroulle, with extensions here.
+	The buffered version and testbed code was implemented by Ben Haller.
+	
+	Ben Haller, 29 August 2024
+*/
+
+// returns n draws from the specified generalized normal distribution
+function (float)rgnorm(integer$ n, [float beta = 0.5], [float mu = 0.0],
+	[float alpha = 0.25])
+{
+	// bounds-check n; could bounds-check the other parameters too...
+	if (n < 0)
+		stop("ERROR (rgnorm): n must be nonnegative.");
+	if (n == 0)
+		return float(0);
+	
+	// create a Python script to generate the draws requested
+	pystr = paste0(
+		"import numpy as np;",
+		"from scipy.stats import gennorm;",
+		"beta ="+beta+";",
+		"loc ="+mu+";",
+		"scale ="+alpha+";",
+		"sample = (gennorm.rvs(beta, loc=loc, scale=scale, size="+n+"));",
+		"print(' '.join(map(str,sample)));");
+	scriptPath = writeTempFile("gnnorm", ".py", pystr);
+	
+	// use system() to call out to the Python script to do the draws
+	drawn_values = system(PYTHON_PATH, args=scriptPath);
+	
+	// clean up after ourselves; if you need to debug this function because it
+	// isn't working, it's helpful to add a `print(scriptPath)` call and comment
+	// out this `deleteFile()` call, and then you can test the script directly
+	// in Terminal.
+	deleteFile(scriptPath);
+	
+	return asFloat(strsplit(drawn_values, " "));
+}
+
+// configures a buffer dictionary for use with buffered_rgnorm()
+function (object<Dictionary>$)buffered_rgnorm_config([integer$ bufsize = 100000],
+	[float beta = 0.5], [float mu = 0.0], [float alpha = 0.25])
+{
+	if (bufsize < 1)
+		stop("ERROR (buffered_rgnorm_config): the buffer size must be >= 1.");
+	
+	// start with an empty buffer; no overhead if no values are ever requested
+	return Dictionary("bufsize", bufsize, "beta", beta, "mu", mu, "alpha",
+		alpha, "buffer", float(0), "index", 0);
+}
+
+// returns n draws from the configured rgnorm() buffer dictionary
+function (float)buffered_rgnorm(object<Dictionary>$ bufDict, integer$ n)
+{
+	// get our buffer info
+	buffer = bufDict.getValue("buffer");
+	index = bufDict.getValue("index");
+	
+	if (size(buffer) - index >= n) {
+		catn("tick " + community.tick + ": using existing values");
+		
+		// use existing values
+		values = buffer[index:(index + n - 1)];
+		index = index + n;
+		
+		// write final state back into the dictionary
+		bufDict.setValue("index", index);
+	}
+	else
+	{
+		catn("tick " + community.tick + ": will reload");
+		
+		// we will need to reload, so get the remaining parameters
+		bufsize = bufDict.getValue("bufsize");
+		beta = bufDict.getValue("beta");
+		mu = bufDict.getValue("mu");
+		alpha = bufDict.getValue("alpha");
+		
+		// first take any remaining values in the buffer
+		if (size(buffer) - index > 0)
+		{
+			values = buffer[index:(bufsize-1)];
+			index = bufsize;
+		}
+		else
+		{
+			values = float(0);
+		}
+		
+		// then load new values, bufsize at a time
+		do {
+			catn("tick " + community.tick + ": reloading...");
+			buffer = rgnorm(bufsize, beta, mu, alpha);
+			index = 0;
+			
+			// are there enough values in the buffer now?
+			if (n - size(values) > bufsize)
+			{
+				// no; take the new buffer and keep going
+				values = c(values, buffer);
+				index = bufsize;
+			}
+			else
+			{
+				// yes; take the subset needed and stop
+				index = n - size(values);
+				values = c(values, buffer[0:(index - 1)]);
+				break;
+			}
+		} while (T);
+		
+		// write final state back into the dictionary
+		bufDict.setValue("buffer", buffer);
+		bufDict.setValue("index", index);
+	}
+	
+	return values;
+}
+
+// print a summary of the given buffer dictionary, for debugging
+function (void)printBufferSummary(object<Dictionary>$ bufDict)
+{
+	buffer = bufDict.getValue("buffer");
+	index = bufDict.getValue("index");
+	catn("tick " + community.tick + ": BUFFER size == " + size(buffer) +
+		", index == " + index + " (" + (size(buffer) - index) + " values left)");
+}
+
+initialize() {
+	// make sure to provide the correct path to Python (you can use the command
+	// ‘which python’ in the Terminal to find out where it is installed for you)
+	defineConstant("PYTHON_PATH", "/opt/local/bin/python");
+}
+
+//
+// Demonstration of the use of rgnorm()
+//
+1 early() {
+	x = rgnorm(10);
+	
+	catn("rgnorm() draws == " + paste(x));
+	catn("mean of draws == " + mean(x));
+	catn("sd of draws == " + sd(x));
+	catn();
+}
+
+//
+// Demonstration of the use of buffered_rgnorm()
+//
+1 late() {
+	// demonstration of the use of buffered_rgnorm()
+	// first, configure the buffer Dictionary and put it into a global
+	bufDict = buffered_rgnorm_config();
+	defineGlobal("RGNORM_BUF", bufDict);
+	
+	printBufferSummary(RGNORM_BUF);
+}
+2:25 late() {
+	// then, for the next ten ticks, do a big draw and print the mean
+	// at tick 8, 15, and 22 a refill of the buffer will be triggered
+	x = buffered_rgnorm(RGNORM_BUF, 15000);
+	catn("tick " + community.tick + ": buffered_rgnorm() size == " + size(x) +
+		", mean == " + mean(x));
+	printBufferSummary(RGNORM_BUF);
+}
