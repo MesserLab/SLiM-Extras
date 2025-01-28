@@ -1,3 +1,6 @@
+# I want to keep Pages doc files in my copy of SLiM-Extras for posterity, but don't want to commit them
+*.pages
+
 #########################
 # .gitignore file for Xcode4 and Xcode5 Source projects
 #
