@@ -1,7 +1,7 @@
 //
 //		Test_PopGen_Functions.slim
 //
-//		by Nick Bailey, 2025; see README for details
+//		by Nick Bailey, currently affiliated with University of St Andrews, 2025; see README for details
 //
 
 initialize() {
@@ -34,7 +34,7 @@ initialize() {
 }
 
 // change population size partway through data collection
-// ticks defined to give 30 coalescent units as burn-in (2 x 30 x Ne = 60Ne; 2 is for diploid)
+// ticks defined to give 10 coalescent units as burn-in (2 x 10 x Ne = 20Ne; 2 is for diploid)
 // some additional burn-in is needed after size change, which is proportional to factor
 (BURN*N_E + asInteger(BURN*N_E*FACTOR/2)) early() {
 	p1.setSubpopulationSize(asInteger(N_E * FACTOR));
@@ -47,9 +47,9 @@ initialize() {
 	
 	// accumulate stats calculations and ticks in vectors for plotting
 	defineGlobal("TICKS", c(TICKS, community.tick));
-	defineGlobal("TAJD", c(TAJD, calcTajimasD(p1.haplosomes)));
-	defineGlobal("pi", c(pi, calcPi(p1.haplosomes)));
-	defineGlobal("wt", c(wt, calcWattersonsTheta(p1.haplosomes)));
+	defineGlobal("TAJD", c(TAJD, calcTajimasD(p1.genomes)));
+	defineGlobal("pi", c(pi, calcPi(p1.genomes)));
+	defineGlobal("wt", c(wt, calcWattersonsTheta(p1.genomes)));
 }
 
 // plot stats against ticks
@@ -57,7 +57,7 @@ initialize() {
 (BURN*N_E + asInteger(BURN*N_E*FACTOR)) early() {
 	// create Tajima's D plot
 	tajdPlot = slimgui.createPlot("Tajima's D Plot",
-		xrange = c((BURN*N_E),(BURN*N_E + BURN*N_E*FACTOR)), 
+		xrange = c((BURN*N_E),asInteger(BURN*N_E + BURN*N_E*FACTOR)), 
 		yrange = c(-4,4), xlab = "Ticks", ylab = "Tajima's D",
 		width = 600, height = 300);
 	tajdPlot.lines(TICKS, TAJD, color = "black", lwd = 3);

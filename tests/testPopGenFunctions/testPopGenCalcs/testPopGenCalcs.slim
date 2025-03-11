@@ -1,0 +1,31 @@
+// set up a simple nucleotide-based neutral simulation
+initialize() {
+	initializeSLiMOptions(nucleotideBased=T);
+	
+	// m1 mutation type: neutral
+	initializeMutationTypeNuc("m1", 0.5, "f", 0.0);
+	
+	// g1 genomic element type: uses m1 for all mutations
+	// make mutation rate 0 and initialize test set of nucleotides
+	initializeGenomicElementType("g1", m1, 1.0, mutationMatrix = mmJukesCantor(0.0));
+	initializeAncestralNucleotides("ATGCTAGCTATT");
+	
+	// uniform chromosome of length 12 b with no recombination
+	initializeGenomicElement(g1, 0, 11);
+	initializeRecombinationRate(0);
+}
+
+// create a population of 2 individuals (4 haplotypes)
+1 early() {
+	sim.addSubpop("p1", 2);
+// manually insert mutations to match test alignments
+	p1.genomes[2].addNewMutation(m1, 0.0, 4, nucleotide = "G");
+	p1.genomes[3].addNewMutation(m1, 0.0, 4, nucleotide = "G");
+	p1.genomes[0].addNewMutation(m1, 0.0, 10, nucleotide = "A");
+	p1.genomes[3].addNewMutation(m1, 0.0, 11, nucleotide = "A");
+// output all sequences of alignment and compute statistics
+	print(p1.genomes.nucleotides());
+	print(calcWattersonsTheta(p1.genomes));
+	print(calcPi(p1.genomes));
+	print(calcTajimasD(p1.genomes));
+}
