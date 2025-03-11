@@ -1,3 +1,9 @@
+#
+#              testPopGenCalcs.py
+#
+#              by Nick Bailey, currently affiliated with University of St Andrews, 11 Mar 2025; see README for details
+#
+
 import numpy as np
 import allel
 

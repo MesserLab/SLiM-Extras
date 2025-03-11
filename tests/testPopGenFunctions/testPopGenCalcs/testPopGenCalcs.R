@@ -1,3 +1,9 @@
+#
+#              testPopGenCalcs.R
+#
+#              by Nick Bailey, currently affiliated with University of St Andrews, 11 Mar 2025; see README for details
+#
+
 library(ape)      # For DNA sequence handling
 library(pegas)    # For theta.s calculation
 
