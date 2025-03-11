@@ -3,8 +3,8 @@ The testPopGenCalcs.slim script runs a simulation for the purpose of testing the
 The aforementioned R and Python scripts read in an alignment of 4 haplotypes identical to those of the slim simulation. Then they compute the population genetic statistics on this alignment using pegas (Paradis et al. 2010, Bioinformatics) and scikit-allel (Miles et al. 2024, no associated paper) respectively. These are well-cited programs for computing these statistics. Both programs are in agreement with my hand calculations of the statistics on the given alignment, which should all be:
 
 Watterson's theta estimate: 0.1363636 
-pi estimate: 0.1388889 
-Tajima's D estimate: 0.1676558
+pi estimate: 0.125
+Tajima's D estimate: -0.7544510776527732
 
 Therefore, the calculations in the slim script can be validated by comparison to these values. Notably, pegas and scikit-allel differ in how they handle alignment gaps and missing data (generally represented as "-" in FASTA and "." or "./." in a VCF), which results in different values of these statistics. By default, no data is missing from SLiM and all sequences remain homologous (e.g. no indels/duplications) so this should only be an issue if someone induces these kinds of phenomena in their simulations.
 

@@ -12,7 +12,7 @@ import allel
 sequences = [
   "ATGCTAGCTAAT",
   "ATGCTAGCTATT",
-  "ATGCGAGCTATT",
+  "ATGCTAGCTATT",
   "ATGCGAGCTATA"
 ]
 

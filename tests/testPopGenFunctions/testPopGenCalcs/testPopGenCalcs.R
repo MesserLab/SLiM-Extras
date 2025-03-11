@@ -11,7 +11,7 @@ library(pegas)    # For theta.s calculation
 sequences <- c(
   "ATGCTAGCTAAT",
   "ATGCTAGCTATT",
-  "ATGCGAGCTATT",
+  "ATGCTAGCTATT",
   "ATGCGAGCTATA"
 )
 
