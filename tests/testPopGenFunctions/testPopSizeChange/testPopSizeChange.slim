@@ -1,0 +1,111 @@
+//
+//		testPopSizeChange.slim
+//
+//		by Nick Bailey, currently affiliated with University of St Andrews, 2025; see README for details
+//
+
+initialize() {
+	// define mutation rate and population size
+	defineConstant("MU", 1e-6);
+	defineConstant("N_E", 2000);
+	
+	// Define multiplicative factor for how much population size changes
+	// (e.g. factor of 4 is multiplying population by 4)
+	// Therefore values >1 are growth, =1 is no change, and <1 is shrinkage
+	defineConstant("FACTOR", 1/4);
+	
+	// define burn-in time in coalescent units
+	defineConstant("BURN", 20);
+	
+	initializeMutationRate(MU);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 99999);
+	initializeRecombinationRate(1e-8);
+}
+
+// create a population of diploid individuals and begin stat tracking
+1 early() {
+	sim.addSubpop("p1", N_E);
+	defineGlobal("TICKS", c());
+	defineGlobal("TAJD", c());
+	defineGlobal("pi", c());
+	defineGlobal("wt", c());
+}
+
+// change population size partway through data collection
+// ticks defined to give 10 coalescent units as burn-in (2 x 10 x Ne = 20Ne; 2 is for diploid)
+// some additional burn-in is needed after size change, which is proportional to factor
+(BURN*N_E + asInteger(BURN*N_E*FACTOR/2)) early() {
+	p1.setSubpopulationSize(asInteger(N_E * FACTOR));
+}
+
+(BURN*N_E):(BURN*N_E + asInteger(BURN*N_E*FACTOR)) late() {
+	// set ticks to only compute stats in certain generations
+	if (community.tick % 100 != 0)
+		return;
+	
+	// accumulate stats calculations and ticks in vectors for plotting
+	defineGlobal("TICKS", c(TICKS, community.tick));
+	defineGlobal("TAJD", c(TAJD, calcTajimasD(p1.genomes)));
+	defineGlobal("pi", c(pi, calcPi(p1.genomes)));
+	defineGlobal("wt", c(wt, calcWattersonsTheta(p1.genomes)));
+}
+
+// plot stats against ticks
+// y-range allows for extreme values of Tajima's D around 0 and room for plot legend
+(BURN*N_E + asInteger(BURN*N_E*FACTOR)) early() {
+	// create Tajima's D plot
+	tajdPlot = slimgui.createPlot("Tajima's D Plot",
+		xrange = c((BURN*N_E),asInteger(BURN*N_E + BURN*N_E*FACTOR)), 
+		yrange = c(-4,4), xlab = "Ticks", ylab = "Tajima's D",
+		width = 600, height = 300);
+	tajdPlot.lines(TICKS, TAJD, color = "black", lwd = 3);
+// Tajima's D is expected to be 0 in neutrality
+	tajdPlot.abline(h = 0);
+// draw vertical line where size change occurs
+	tajdPlot.abline(v = (BURN*N_E + asInteger(BURN*N_E*FACTOR/2)), color = '#FFCB05');
+	tajdPlot.addLegend(position = "bottomLeft", labelSize = 14, graphicsWidth = 20);
+	tajdPlot.legendLineEntry("Expectation", "red", lwd = 3);
+	tajdPlot.legendLineEntry("Population Size Change", "#FFCB05", lwd = 3);
+	tajdPlot.legendLineEntry("Computed Value", "black", lwd = 3);
+	
+	// create pi plot; note the ?else expression in the y-range
+	// this also exists in wt plot and it allows the plot to vary by population size
+	// bigger pops have more diversity and the top of the plot must be defined by post-growth
+	// if there is no growth, top part must be defined by initial pop size
+	// -1 always remains the floor because diversity can't be less than 0;
+	// -0.005 leaves room for the plot legend
+	piPlot = slimgui.createPlot("Pi Plot",
+		xrange = c((BURN*N_E),(BURN*N_E + BURN*N_E*FACTOR)),
+		yrange = c(-0.005, (FACTOR > 1) ? 8*N_E*MU*FACTOR else 8*N_E*MU),
+		xlab = "Ticks", ylab = "Pi",
+		width = 600, height = 300);
+	piPlot.lines(TICKS, pi, color = "black", lwd = 3);
+	// diversity is expected to be 4*N_E*MU for diploids (Kimura 1968 Genetics Research)
+	piPlot.abline(h = 4*N_E*MU);
+	// after pop size change diversity must change accordingly
+	piPlot.abline(h = 4*N_E*MU*FACTOR, color = 'blue');
+	piPlot.abline(v = (BURN*N_E + asInteger(BURN*N_E*FACTOR/2)), color = '#FFCB05');
+	piPlot.addLegend(position = "bottomLeft", labelSize = 14, graphicsWidth = 20);
+	piPlot.legendLineEntry("Population Size Change", "#FFCB05", lwd = 3);
+	piPlot.legendLineEntry("Expectation Pre-change", "red", lwd = 3);
+	piPlot.legendLineEntry("Expectation Post-change", "blue", lwd = 3);
+	piPlot.legendLineEntry("Computed Value", "black", lwd = 3);
+	
+	// create Watterson's theta plot
+	wtPlot = slimgui.createPlot("Watterson's theta Plot",
+		xrange = c((BURN*N_E),(BURN*N_E + BURN*N_E*FACTOR)), 
+		yrange = c(-0.005, ifelse(FACTOR > 1, 8*N_E*MU*FACTOR, 8*N_E*MU)),
+		xlab = "Ticks", ylab = "Watterson's theta",
+		width = 600, height = 300);
+	wtPlot.lines(TICKS, wt, color = "black", lwd = 3);
+	wtPlot.abline(h = 4*N_E*MU);
+	wtPlot.abline(h = 4*N_E*MU*FACTOR, color = 'blue');
+	wtPlot.abline(v = (BURN*N_E + asInteger(BURN*N_E*FACTOR/2)), color = '#FFCB05');
+	wtPlot.addLegend(position = "bottomLeft", labelSize = 14, graphicsWidth = 20);
+	wtPlot.legendLineEntry("Population Size Change", "#FFCB05", lwd = 3);
+	wtPlot.legendLineEntry("Expectation Pre-change", "red", lwd = 3);
+	wtPlot.legendLineEntry("Expectation Post-change", "blue", lwd = 3);
+	wtPlot.legendLineEntry("Computed Value", "black", lwd = 3);
+}
