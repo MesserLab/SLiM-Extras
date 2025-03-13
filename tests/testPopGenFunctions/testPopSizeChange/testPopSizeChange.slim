@@ -1,7 +1,8 @@
 //
 //		testPopSizeChange.slim
 //
-//		by Nick Bailey, currently affiliated with University of St Andrews, 2025; see README for details
+//		by Nick Bailey, currently affiliated with University of St Andrews,
+//		20 Jan. 2025; see README for details
 //
 
 initialize() {
@@ -47,9 +48,9 @@ initialize() {
 	
 	// accumulate stats calculations and ticks in vectors for plotting
 	defineGlobal("TICKS", c(TICKS, community.tick));
-	defineGlobal("TAJD", c(TAJD, calcTajimasD(p1.genomes)));
-	defineGlobal("pi", c(pi, calcPi(p1.genomes)));
-	defineGlobal("wt", c(wt, calcWattersonsTheta(p1.genomes)));
+	defineGlobal("TAJD", c(TAJD, calcTajimasD(p1.haplosomes)));
+	defineGlobal("pi", c(pi, calcPi(p1.haplosomes)));
+	defineGlobal("wt", c(wt, calcWattersonsTheta(p1.haplosomes)));
 }
 
 // plot stats against ticks

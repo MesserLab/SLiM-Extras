@@ -1,7 +1,8 @@
 //
-//              testPopGenCalcs.slim
+//		testPopGenCalcs.slim
 //
-//              by Nick Bailey, currently affiliated with University of St Andrews, 11 Mar 2025; see README for details
+//		by Nick Bailey, currently affiliated with University of St Andrews,
+//		11 Mar 2025; see README for details
 //
 
 // set up a simple nucleotide-based neutral simulation
@@ -22,15 +23,17 @@ initialize() {
 }
 
 // create a population of 2 individuals (4 haplotypes)
-1 early() {
+1 late() {
 	sim.addSubpop("p1", 2);
-// manually insert mutations to match test alignments
-	p1.genomes[2].addNewMutation(m1, 0.0, 4, nucleotide = "G");
-	p1.genomes[0].addNewMutation(m1, 0.0, 10, nucleotide = "A");
-	p1.genomes[3].addNewMutation(m1, 0.0, 11, nucleotide = "A");
-// output all sequences of alignment and compute statistics
-	print(p1.genomes.nucleotides());
-	print(calcWattersonsTheta(p1.genomes));
-	print(calcPi(p1.genomes));
-	print(calcTajimasD(p1.genomes));
+	
+	// manually insert mutations to match test alignments
+	p1.haplosomes[2].addNewMutation(m1, 0.0, 4, nucleotide = "G");
+	p1.haplosomes[0].addNewMutation(m1, 0.0, 10, nucleotide = "A");
+	p1.haplosomes[3].addNewMutation(m1, 0.0, 11, nucleotide = "A");
+	
+	// output all sequences of alignment and compute statistics
+	print(p1.haplosomes.nucleotides());
+	print(calcWattersonsTheta(p1.haplosomes));
+	print(calcPi(p1.haplosomes));
+	print(calcTajimasD(p1.haplosomes));
 }
