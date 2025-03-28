@@ -5,7 +5,7 @@
 	for loop over individuals, with a do-while loop run for each
 	individual to keep drawing new positions until a position on land
 	is drawn.  However, this code is much smarter: it vectorizes the
-	redrawing process.  This should run much more quickly that the
+	redrawing process.  This should run much more quickly than the
 	naive version, for large population sizes.  More generally, it
 	demonstrates how to vectorize an operation that might require a
 	different number of iterations for different elements of the
@@ -13,6 +13,19 @@
 	are removed, and the remaining vector is iterated again.
 	
 	Ben Haller, 13 September 2019
+	
+	
+	UPDATE: The built-in method pointUniformWithMap() now does this;
+	the loop under "// start anywhere on land" can now be replaced
+	with the single line:
+	
+	p1.individuals.setSpatialPosition(p1.pointUniformWithMap(1000, "world"));
+	
+	However, this model illustrates a useful and general technique
+	for vectorization of complex operations, so I'm going to keep
+	it in SLiM-Extras.
+	
+	Ben Haller, 28 March 2025
 */
 
 initialize() {
@@ -41,6 +54,9 @@ initialize() {
 	p1.defineSpatialMap("world", "xy", 1.0 - mapImage.floatK,
 		valueRange=c(0.0, 1.0), colors=c("#0000CC", "#55FF22"));
 	
+	// BCH 3/28/2025: This is the modern version of the positioning code below!
+	//p1.individuals.setSpatialPosition(p1.pointUniformWithMap(1000, "world"));
+	
 	// start anywhere on land
 	leftToDraw = p1.individuals;
 	
@@ -59,13 +75,13 @@ initialize() {
 	}
 }
 1: late() {
-	i1.evaluate();
+	i1.evaluate(p1);
 	inds = sim.subpopulations.individuals;
 	competition = i1.totalOfNeighborStrengths(inds) / size(inds);
 	competition = pmin(competition, 0.99);
 	inds.fitnessScaling = 1.0 - competition;
 	
-	i2.evaluate();
+	i2.evaluate(p1);
 }
 1: mateChoice() {
 	return i2.strength(individual);
