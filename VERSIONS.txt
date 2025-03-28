@@ -1,5 +1,9 @@
 This is a quick history of changes to SLiM-Extras, by date since we don't use a version number for it.  The point of this is mostly to make it easier to see what stuff has been added/changed since the last time you looked at SLiM-Extras.
 
+13 Mar. 2025: add the tests/ folder, with some tests for SLiM's built-in popgen functions
+
+21 Jan. 2025: revise the "pseudoautosomal regions" folder with new content related to SLiM 5
+
 3 Jul. 2024: add the writing/ folder, with an example of syntax coloring of SLiM code in LaTeX.
 
 8 Oct. 2021: add the inversions/ folder, with files related to the new inversion recipe, section 14.4
