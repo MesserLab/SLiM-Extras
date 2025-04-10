@@ -1,0 +1,51 @@
+/*
+	Moran.slim : a Moran model implementation in SLiM
+	by Philip Wolper, 8 April 2025 (thanks!)
+	minor tweaks by BCH 10 April 2025
+	
+	See https://groups.google.com/g/slim-discuss/c/8p4AqwU48Us.
+*/
+
+initialize()
+{
+	initializeSLiMModelType("nonWF");
+	
+	// no genetics setup
+}
+
+reproduction()
+{
+	// Moran reproduction -- sample one individual to reproduce clonally.
+	parent = sample(p1.individuals, 1);
+	offspring = subpop.addCloned(parent);
+	
+	// Tag the offspring with the linage tag of the parent.
+	offspring.tag = parent.tag;
+	
+	// De-activate this callback so we only reproduce once per tick.
+	self.active = 0;
+}
+
+1 early()
+{
+	// Start with each individual representing a unique lineage.
+	sim.addSubpop("p1", 100, haploid=T);
+	p1.individuals.tag = seqLen(p1.individualCount);
+}
+
+2: late()
+{
+	// Moran death -- sample one individual to die.
+	victim = sample(p1.individuals, 1);
+	sim.killIndividuals(victim);
+}
+
+1:50000 late()
+{
+	// Print the number of lineages remaining, and stop at 1.
+	lineageCount = size(unique(p1.individuals.tag));
+	catn("Tick " + community.tick + ": " + lineageCount + " lineages");
+	
+	if (lineageCount == 1)
+		sim.simulationFinished();
+}
