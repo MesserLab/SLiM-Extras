@@ -1,14 +1,16 @@
-// Script by Hilde Schneemann (hilde.schneemann@evobio.eu) to simulate polygenic epistasis in SLiM
-// Here we start with a predefined set of mutations subject to pairwise epistasis 
-// The selection coefficients and pairwise epistatic effects are read in as a matrix from a file called "epifile.csv"
-// The simulation finishes when all mutations are either fixed or lost. No new mutations occur.
+// Script by Hilde Schneemann (hilde.schneemann@evobio.eu) to simulate polygenic
+// epistasis in SLiM.  Here we start with a predefined set of mutations subject
+// to pairwise epistasis.  The selection coefficients and pairwise epistatic
+// effects are read in as a matrix from a file called "epifile.csv".  The
+// simulation finishes when all mutations are either fixed or lost.  No new
+// mutations occur.
 
-
-initialize() {
+initialize()
+{
 	// number of mutations to consider
 	defineConstant("D", 24);
 	
-	//set up haploid genome with free recombination and NO new mutations
+	// set up haploid genome with free recombination and NO new mutations
 	initializeMutationType("m1", 1.0, "f", 0.0);
 	m1.convertToSubstitution = F;
 	initializeGenomicElementType("g1", m1, 1.0);
@@ -17,59 +19,63 @@ initialize() {
 	initializeGenomicElement(g1);
 	initializeRecombinationRate(0.5);
 	
-	//start simulation from standard population file describing the position of mutations
+	// start simulation from standard population file describing the position of mutations
 	defineConstant("filePOP", "popfile.csv");
 
-  //import matrix with selection coefficient of each mutation on diagonal, and epistatic coefficients on off-diagonal
+	// import matrix with selection coefficient of each mutation on diagonal, and epistatic coefficients on off-diagonal
 	defineConstant("fileEPI", "epifile.csv");
 }
 
 
-1 late(){
-	
-	//import starting population
+1 late()
+{
+	// import starting population
 	sim.readFromPopulationFile(filePOP);
 	
-	//save all mutations permanently
+	// save all mutations permanently
 	defineGlobal("MUTS", sim.mutations);
 	
-	//import matrix of selection and pairwise epistatic coefficients
-	effects = readCSV(fileEPI,colNames=T, colTypes="f",sep=',');
+	// import matrix of selection and pairwise epistatic coefficients
+	effects = readCSV(fileEPI, colNames=T, colTypes="f", sep=',');
 	effects = effects.asMatrix();
 	
-	//save this matrix permanently
+	// save this matrix permanently
 	defineGlobal("EPI", effects);
 }
 
 
-late() {
-
-  //calculate fitness of each individual by summing selection and epistatic coefficients of the (pairs of) mutations carried
-  
-	for(ind in sim.subpopulations.individuals){
-		//numeric genotype indicating which mutations are carried (in the order in which they appear in the matrix)
-		geno = (ind.haplosomes.mutationCountsInHaplosomes(MUTS))[order(MUTS.id)];
+late()
+{
+	// calculate fitness of each individual by summing selection and epistatic coefficients of the (pairs of) mutations carried
+	muts_order = order(MUTS.id);
+	
+	for (ind in sim.subpopulations.individuals)
+	{
+		// numeric genotype indicating which mutations are carried (in the order in which they appear in the matrix)
+		geno = ind.haplosomes.mutationCountsInHaplosomes(MUTS)[muts_order];
 		
-		//create genotype matrix indicating which (pairs of) mutations are carried
-		genomat = matrix(rep(geno,D),nrow=D,ncol=D,byrow=T)*matrix(rep(geno,D),nrow=D,ncol=D,byrow=F);
+		// create genotype matrix indicating which (pairs of) mutations are carried
+		genomat = matrix(rep(geno,D),nrow=D,ncol=D,byrow=T) * matrix(rep(geno,D),nrow=D,ncol=D,byrow=F);
 		
-		//multiply genotype with effects matrix to obtain selection and epistatic coefficients for each (pair of) mutations carried
-		epi = EPI*genomat;
+		// multiply genotype with effects matrix to obtain selection and epistatic coefficients for each (pair of) mutations carried
+		epi = EPI * genomat;
 		
-		//sum selectino and epistatic coefficients across all (pairs of) loci
+		// sum selection and epistatic coefficients across all (pairs of) loci
 		sumepi = sum(epi);
 		
-		//assign fitness as exponential of this sum
+		// assign fitness as exponential of this sum
 		ind.fitnessScaling = exp(sumepi);
 	}
 	
-	//check how many mutations are still segregating
+	// check how many mutations are still segregating
 	mut_seg = sum(sim.mutationFrequencies(NULL) < 1.0);
 	
-	//calculate mean and variance in fitness and report every 20 ticks
+	// calculate mean and variance in fitness and report every 20 ticks
 	wbar = mean(p1.individuals.fitnessScaling);
 	wvar = var(p1.individuals.fitnessScaling);
-	if(community.tick % 20 == 0 | community.tick == 1) catn("Tick = " + community.tick + ", " + mut_seg + " segregating, wbar=" + wbar + " wvar:" + wvar);
+	
+	if (community.tick % 20 == 0 | community.tick == 1)
+		catn("Tick = " + community.tick + ", " + mut_seg + " segregating, wbar=" + wbar + " wvar:" + wvar);
 	
 	// check for final termination
 	if (mut_seg == 0) {
@@ -83,7 +89,7 @@ late() {
 	}
 }
 
-//how long to keep simulation running if segregating mutations persist
+// how long to keep the simulation running if segregating mutations persist
 5000000 late() {
 	sim.outputFull();
 }
